@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-text-primary text-base antialiased;
+  }
+}
+
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #printable-document,
+  #printable-document * {
+    visibility: visible !important;
+  }
+
+  #printable-document {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  #printable-document * {
+    overflow: visible !important;
+  }
+
+  /* Template 1 (BYJU'S) — fit A4, no clipping, footer visible */
+  #printable-document.payslip-t1-root {
+    position: absolute !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    left: 0 !important;
+    top: 0 !important;
+  }
+
+  #printable-document.payslip-t1-root .payslip-t1-page {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 8mm 10mm 16mm !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+    min-height: 277mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #printable-document.payslip-t1-root .payslip-t1-content {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  #printable-document.payslip-t1-root table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  #printable-document.payslip-t1-root th,
+  #printable-document.payslip-t1-root td {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  #printable-document.payslip-t1-root th {
+    white-space: normal !important;
+  }
+
+  #printable-document.payslip-t1-root .emp-info-table td {
+    overflow: hidden !important;
+  }
+
+  #printable-document.payslip-t1-root .payslip-t1-page-number {
+    position: absolute !important;
+    right: 10mm !important;
+    bottom: 5mm !important;
+    visibility: visible !important;
+    display: block !important;
+    z-index: 10 !important;
+  }
+
+  #printable-document.payslip-t1-root .payslip-t1-page + .payslip-t1-page {
+    page-break-before: always !important;
+    break-before: page !important;
+  }
+
+  /* Templates 2 & 3 — full page visible in PDF, footer not cut off */
+  #printable-document.payslip-t2-root,
+  #printable-document.payslip-t3-root {
+    position: absolute !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  #printable-document.payslip-t2-root .payslip-t2-page,
+  #printable-document.payslip-t3-root .payslip-t3-page {
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding-bottom: 10mm !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  #printable-document.payslip-t2-root .payslip-t2-footer,
+  #printable-document.payslip-t3-root .payslip-t3-footer {
+    visibility: visible !important;
+    display: flex !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-top: 8px !important;
+  }
+
+  #printable-document.payslip-t3-root .payslip-t3-footer {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-scale-reset,
+  .print-viewport-reset {
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+}

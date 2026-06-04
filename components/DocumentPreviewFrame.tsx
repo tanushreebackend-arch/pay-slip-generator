@@ -1,0 +1,47 @@
+'use client'
+
+interface DocumentPreviewFrameProps {
+  children: React.ReactNode
+  pages?: number
+}
+
+const SCALE = 0.75
+const DOC_WIDTH = 794
+const DOC_HEIGHT = 1123
+
+export default function DocumentPreviewFrame({
+  children,
+  pages = 1,
+}: DocumentPreviewFrameProps) {
+  const viewportMinH = DOC_HEIGHT * SCALE * pages
+
+  return (
+    <div>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-[2px] text-text-muted print:hidden">
+        PREVIEW
+      </p>
+      <div className="overflow-visible rounded-xl border border-border bg-white pb-2 print:border-0 print:rounded-none print:bg-white print:p-0 print:shadow-none">
+        <div
+          className="print-viewport-reset"
+          style={{
+            width: DOC_WIDTH * SCALE,
+            minHeight: viewportMinH,
+            overflow: 'visible',
+          }}
+        >
+          <div
+            className="print-scale-reset"
+            style={{
+              transform: `scale(${SCALE})`,
+              transformOrigin: 'top left',
+              width: DOC_WIDTH,
+              paddingBottom: 56,
+            }}
+          >
+            {children}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
