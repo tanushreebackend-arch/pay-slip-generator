@@ -326,8 +326,8 @@ export default function PayslipPage() {
   }
 
   return (
-    <div className="print:max-w-none">
-      <header className="mb-6 print:hidden">
+    <div className="flex h-[calc(100vh-4rem)] flex-col print:h-auto print:max-w-none">
+      <header className="mb-6 shrink-0 print:hidden">
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">
           Payslip Generator
         </h1>
@@ -336,8 +336,8 @@ export default function PayslipPage() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-8 lg:flex-row print:block">
-        <div className="w-full shrink-0 space-y-6 rounded-xl border border-border bg-background p-6 lg:w-[420px] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto print:hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row print:block print:h-auto">
+        <div className="w-full shrink-0 space-y-6 overflow-y-auto rounded-xl border border-border bg-background p-6 lg:w-[420px] print:hidden">
           <div>
             <p
               className="mb-3 border-b border-border pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-text-muted"
@@ -667,7 +667,7 @@ export default function PayslipPage() {
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 lg:sticky lg:top-8 lg:self-start print:w-full">
+        <div className="min-w-0 flex-1 overflow-y-auto print:w-full print:overflow-visible">
           <DocumentPreviewFrame
             pages={
               payslip.selectedTemplate === 1 && showTaxPage

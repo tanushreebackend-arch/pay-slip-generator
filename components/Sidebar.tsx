@@ -47,7 +47,7 @@ export default function Sidebar() {
   const navItems = showAdminNav ? adminNav : employeeNav
 
   return (
-    <aside className="flex h-screen w-[220px] shrink-0 flex-col border-r border-border bg-background print:hidden">
+    <aside className="flex h-full w-[220px] shrink-0 flex-col border-r border-border bg-background print:hidden">
       <div className="px-4 pb-4 pt-5">
         <h1 className="text-[15px] font-bold text-text-primary">PayGen</h1>
         <p className="mt-0.5 text-[11px] text-text-muted">
@@ -55,7 +55,7 @@ export default function Sidebar() {
         </p>
       </div>
       <div className="mb-2 border-b border-border" />
-      <nav className="flex-1 space-y-0.5 px-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
         {navItems.map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (

@@ -12,22 +12,22 @@ interface LetterPreviewProps {
 export default function LetterPreview({ employee, settings, letter }: LetterPreviewProps) {
   const wrapperStyle: React.CSSProperties = {
     width: 794,
-    minHeight: 1123,
+    maxWidth: '100%',
+    height: 'auto',
+    maxHeight: 1123,
     backgroundColor: '#ffffff',
     fontFamily: 'Arial, Helvetica, sans-serif',
-    padding: '48px 56px',
-    paddingBottom: 56,
+    padding: '40px 48px 36px',
     boxSizing: 'border-box',
     color: '#111827',
     fontSize: 13,
-    lineHeight: 1.8,
+    lineHeight: 1.55,
     position: 'relative',
-    overflow: 'visible',
-    maxWidth: '100%',
+    overflow: 'hidden',
   }
 
   const pStyle: React.CSSProperties = {
-    margin: '0 0 16px 0',
+    margin: '0 0 12px 0',
     textAlign: 'justify',
     wordBreak: 'break-word',
     overflowWrap: 'break-word',
@@ -38,7 +38,15 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
       <div
         id="printable-document"
         className="letter-root"
-        style={{ ...wrapperStyle, textAlign: 'center', color: '#6b7280' }}
+        style={{
+          ...wrapperStyle,
+          minHeight: 280,
+          textAlign: 'center',
+          color: '#6b7280',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         Select an employee to preview letter
       </div>
@@ -71,7 +79,7 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
               <img
                 src={settings.logo_url}
                 alt="Logo"
-                style={{ height: 44, objectFit: 'contain', flexShrink: 0 }}
+                style={{ height: 40, objectFit: 'contain', flexShrink: 0 }}
               />
             )}
             <div style={{ minWidth: 0, flex: 1, maxWidth: '100%' }}>
@@ -100,13 +108,13 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
           style={{
             height: 0,
             borderTop: '2px solid #111827',
-            marginTop: 20,
-            marginBottom: 32,
+            marginTop: 16,
+            marginBottom: 20,
             width: '100%',
           }}
         />
 
-        <div style={{ textAlign: 'right', fontSize: 13, color: '#6b7280', marginBottom: 24 }}>
+        <div style={{ textAlign: 'right', fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
           {letterDate}
         </div>
 
@@ -116,7 +124,7 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
             fontSize: 12,
             color: '#6b7280',
             fontWeight: 400,
-            marginBottom: 24,
+            marginBottom: 16,
           }}
         >
           Employee ID: {employee.employee_id}
@@ -127,13 +135,13 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
             fontSize: 13,
             fontWeight: 700,
             textDecoration: 'underline',
-            marginBottom: 20,
+            marginBottom: 14,
           }}
         >
           {subject}
         </div>
 
-        <div style={{ marginBottom: 16 }}>Dear {employee.name},</div>
+        <div style={{ marginBottom: 12 }}>Dear {employee.name},</div>
 
         {isRelieving ? (
           <>
@@ -174,17 +182,17 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
           </>
         )}
 
-        <div style={{ marginTop: 32, marginBottom: 40 }}>Yours sincerely,</div>
+        <div style={{ marginTop: 24, marginBottom: 20 }}>Yours sincerely,</div>
 
         <div>
           {settings.signature_url && (
             <img
               src={settings.signature_url}
               alt="Signature"
-              style={{ height: 48, objectFit: 'contain', display: 'block' }}
+              style={{ height: 44, objectFit: 'contain', display: 'block' }}
             />
           )}
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginTop: 8 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', marginTop: 6 }}>
             {settings.signatory_name}
           </div>
           <div style={{ fontSize: 11, color: '#6b7280' }}>{settings.signatory_designation}</div>
@@ -194,9 +202,9 @@ export default function LetterPreview({ employee, settings, letter }: LetterPrev
         <div
           className="letter-footer"
           style={{
-            marginTop: 40,
+            marginTop: 28,
             borderTop: '1px solid #e5e7eb',
-            paddingTop: 12,
+            paddingTop: 10,
             textAlign: 'center',
             fontSize: 10,
             color: '#9ca3af',

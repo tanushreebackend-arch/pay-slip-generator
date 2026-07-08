@@ -68,8 +68,8 @@ export default function LettersPage() {
   }
 
   return (
-    <div className="print:max-w-none">
-      <header className="mb-6">
+    <div className="flex h-[calc(100vh-4rem)] flex-col print:h-auto print:max-w-none">
+      <header className="mb-6 shrink-0 print:hidden">
         <h1 className="text-xl font-semibold tracking-tight text-text-primary">
           Letter Generator
         </h1>
@@ -78,8 +78,8 @@ export default function LettersPage() {
         </p>
       </header>
 
-      <div className="flex flex-col gap-8 lg:flex-row print:block">
-        <div className="w-full shrink-0 space-y-6 rounded-xl border border-border bg-background p-6 lg:w-[420px] lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto print:hidden">
+      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row print:block print:h-auto">
+        <div className="w-full shrink-0 space-y-6 overflow-y-auto rounded-xl border border-border bg-background p-6 lg:w-[420px] print:hidden">
           <div>
             <SectionHeader title="Letter Type" />
             <div className="flex gap-2">
@@ -144,8 +144,8 @@ export default function LettersPage() {
           </div>
         </div>
 
-        <div className="min-w-0 flex-1 lg:sticky lg:top-8 lg:self-start print:w-full">
-          <DocumentPreviewFrame>
+        <div className="min-w-0 flex-1 overflow-y-auto print:w-full print:overflow-visible">
+          <DocumentPreviewFrame fitContent>
             <LetterPreview employee={selected} settings={settings} letter={letter} />
           </DocumentPreviewFrame>
         </div>

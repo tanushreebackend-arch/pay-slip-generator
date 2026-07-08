@@ -198,9 +198,9 @@
     max-width: 210mm !important;
     min-height: auto !important;
     height: auto !important;
-    max-height: none !important;
+    max-height: 277mm !important;
     margin: 0 !important;
-    padding: 12mm 14mm 14mm !important;
+    padding: 12mm 14mm 12mm !important;
     box-sizing: border-box !important;
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
@@ -223,6 +223,7 @@
   .print-scale-reset,
   .print-viewport-reset {
     transform: none !important;
+    zoom: 1 !important;
     width: 100% !important;
     max-width: 100% !important;
     min-height: 0 !important;
