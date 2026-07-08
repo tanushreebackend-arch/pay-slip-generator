@@ -1,5 +1,6 @@
 import type { Employee as PrismaEmployee, Settings as PrismaSettings } from '@prisma/client'
 import type { Employee, PayslipCustomField, Settings } from '@/types'
+import { DEFAULT_DOCUMENT_FONT, isDocumentFontId } from '@/lib/documentFonts'
 
 export function mapEmployee(row: PrismaEmployee): Employee {
   return {
@@ -47,7 +48,8 @@ export function mapSettings(row: PrismaSettings): Settings {
     signatory_designation: row.signatoryDesignation ?? '',
     logo_url: row.logoUrl ?? '',
     signature_url: row.signatureUrl ?? '',
-    document_font: row.documentFont ?? 'arial',
+    document_font:
+      row.documentFont && isDocumentFontId(row.documentFont) ? row.documentFont : DEFAULT_DOCUMENT_FONT,
     document_font_size: row.documentFontSize ?? 100,
     payslip_custom_fields: parsePayslipCustomFields(row.payslipCustomFields),
   }

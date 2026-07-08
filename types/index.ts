@@ -1,5 +1,6 @@
 import type { SalaryCalculation, SalaryLineItem } from '@/lib/salaryCalc'
 import type { LeaveDetailRow } from '@/lib/leaveDetails'
+import type { DocumentFontId } from '@/lib/documentFonts'
 
 export interface Employee {
   id: string
@@ -37,7 +38,7 @@ export interface Settings {
   logo_url: string
   signature_url: string
   /** Font used for payslips and letters (see lib/documentFonts.ts) */
-  document_font: string
+  document_font: DocumentFontId
   /** Font size percentage for documents (85-125) */
   document_font_size: number
   payslip_custom_fields: PayslipCustomField[]
