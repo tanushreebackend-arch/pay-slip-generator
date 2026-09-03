@@ -275,6 +275,7 @@ export default function PayslipPreviewT4({
     { label: 'Medical Allowance', amount: c.actualMedical },
     { label: 'Conveyance Allowance', amount: c.actualConveyance },
     { label: 'Special Allowance', amount: c.actualSpecial },
+    ...(c.extraAllowances ?? []).map((a) => ({ label: a.label, amount: a.amount })),
   ]
   if (c.finalSettlement > 0) {
     earnings.push({ label: 'Final Settlement', amount: c.finalSettlement })

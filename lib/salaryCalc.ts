@@ -77,6 +77,8 @@ export type SalaryLineItem = { label: string; amount: number }
 export type SalaryCalculationOptions = {
   finalSettlement?: number
   reimbursements?: SalaryLineItem[]
+  /** Extra earning lines (e.g. Gift Allowance) — label + amount */
+  extraAllowances?: SalaryLineItem[]
   basic?: number | null
   hra?: number | null
   /** Override standard medical allowance (monthly gross component) */
@@ -137,7 +139,22 @@ export function calculateSalary(
   const actualSpecial = parseFloat((stdSpecial * ratio).toFixed(2))
   const finalSettlement = parseFloat(String(options.finalSettlement ?? 0)) || 0
 
-  const salaryEarnings = actualBasic + actualHRA + actualMedical + actualConveyance + actualSpecial
+  const extraAllowancesMonthly = (options.extraAllowances ?? [])
+    .filter((a) => a.label)
+    .map((a) => ({
+      label: a.label,
+      amount: parseFloat(String(a.amount)) || 0,
+    }))
+  const extraAllowances = extraAllowancesMonthly.map((a) => ({
+    label: a.label,
+    amount: parseFloat((a.amount * ratio).toFixed(2)),
+  }))
+  const totalExtraAllowances = parseFloat(
+    extraAllowances.reduce((sum, a) => sum + a.amount, 0).toFixed(2)
+  )
+
+  const salaryEarnings =
+    actualBasic + actualHRA + actualMedical + actualConveyance + actualSpecial + totalExtraAllowances
   const totalEarningsA = parseFloat((salaryEarnings + finalSettlement).toFixed(2))
 
   const pfEmployee =
@@ -185,6 +202,8 @@ export function calculateSalary(
     actualConveyance,
     actualSpecial,
     finalSettlement,
+    extraAllowances,
+    totalExtraAllowances,
     totalEarningsA,
     pf: pfEmployee,
     pfEmployee,

@@ -52,6 +52,7 @@ const defaultPayslip = (): PayslipData => ({
   final_settlement: 0,
   custom_deductions: [],
   reimbursements: [],
+  extra_allowances: [],
   showTaxPage: false,
   selectedTemplate: 4,
   medical_allowance: null,
@@ -248,6 +249,35 @@ export default function PayslipPage() {
     setGenerated(false)
   }
 
+  const addExtraAllowance = () => {
+    setPayslip((prev) => ({
+      ...prev,
+      extra_allowances: [...prev.extra_allowances, { label: '', amount: 0 }],
+    }))
+    setGenerated(false)
+  }
+
+  const updateExtraAllowance = (
+    index: number,
+    field: keyof Reimbursement,
+    value: string | number
+  ) => {
+    setPayslip((prev) => {
+      const next = [...prev.extra_allowances]
+      next[index] = { ...next[index], [field]: value }
+      return { ...prev, extra_allowances: next }
+    })
+    setGenerated(false)
+  }
+
+  const removeExtraAllowance = (index: number) => {
+    setPayslip((prev) => ({
+      ...prev,
+      extra_allowances: prev.extra_allowances.filter((_, i) => i !== index),
+    }))
+    setGenerated(false)
+  }
+
   const salaryCalc =
     selected && payslip.from_date && payslip.to_date
       ? calculateSalary(
@@ -259,6 +289,7 @@ export default function PayslipPage() {
           {
             finalSettlement: payslip.final_settlement,
             reimbursements: payslip.reimbursements,
+            extraAllowances: payslip.extra_allowances,
             medicalAllowance: payslip.medical_allowance,
             conveyanceAllowance: payslip.conveyance_allowance,
             specialAllowance: payslip.special_allowance,
@@ -440,6 +471,7 @@ export default function PayslipPage() {
                   ),
                   pf_amount:
                     emp.pf_amount != null ? emp.pf_amount : getDefaultPfAmount(gross),
+                  extra_allowances: [],
                 }))
                 setGenerated(false)
               }}
@@ -644,6 +676,56 @@ export default function PayslipPage() {
                   }
                 />
               </div>
+            </div>
+
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-medium text-text-secondary">
+                  Extra allowances (Gift Allowance, Bonus, etc.)
+                </p>
+                <Button type="button" variant="secondary" size="sm" onClick={addExtraAllowance}>
+                  Add Allowance
+                </Button>
+              </div>
+              {payslip.extra_allowances.length === 0 ? (
+                <p className="text-[11px] text-text-muted">
+                  No extra allowances. Click &quot;Add Allowance&quot; to add Gift Allowance or any custom earning.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {payslip.extra_allowances.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        placeholder="e.g. Gift Allowance"
+                        className="flex-1"
+                        value={a.label}
+                        onChange={(e) => updateExtraAllowance(i, 'label', e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        placeholder="Amount"
+                        className="w-28"
+                        value={a.amount || ''}
+                        onChange={(e) =>
+                          updateExtraAllowance(i, 'amount', parseFloat(e.target.value) || 0)
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="iconLg"
+                        className="shrink-0 text-text-secondary hover:bg-accent-light hover:text-accent"
+                        onClick={() => removeExtraAllowance(i)}
+                        aria-label="Remove allowance"
+                      >
+                        <X className="h-5 w-5" strokeWidth={2.5} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

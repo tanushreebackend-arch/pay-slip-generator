@@ -314,6 +314,13 @@ export default function PayslipPreviewT3({
                 <td style={{ ...earnTd, textAlign: 'right' }}>{fmt(c.stdSpecial)}</td>
                 <td style={{ ...earnTd, textAlign: 'right' }}>{fmt(c.actualSpecial)}</td>
               </tr>
+              {(c.extraAllowances ?? []).map((a, i) => (
+                <tr key={`extra-${i}`}>
+                  <td style={earnTd}>{a.label}</td>
+                  <td style={{ ...earnTd, textAlign: 'right' }}>{fmt(a.amount)}</td>
+                  <td style={{ ...earnTd, textAlign: 'right' }}>{fmt(a.amount)}</td>
+                </tr>
+              ))}
               {c.finalSettlement > 0 ? (
                 <tr>
                   <td style={earnTd}>Final Settlement</td>

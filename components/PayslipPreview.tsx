@@ -317,6 +317,7 @@ export default function PayslipPreview({
     { l: 'Medical Allowance', s: c.stdMedical, a: c.actualMedical },
     { l: 'Conveyance Allowance', s: c.stdConveyance, a: c.actualConveyance },
     { l: 'Special Allowance', s: c.stdSpecial, a: c.actualSpecial },
+    ...(c.extraAllowances ?? []).map((a) => ({ l: a.label, s: a.amount, a: a.amount })),
     ...(c.finalSettlement > 0
       ? [{ l: 'Final Settlement', s: c.finalSettlement, a: c.finalSettlement }]
       : []),

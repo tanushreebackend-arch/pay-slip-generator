@@ -83,6 +83,8 @@ export interface PayslipData {
   final_settlement: number
   custom_deductions: CustomDeduction[]
   reimbursements: Reimbursement[]
+  /** Extra earning lines (Gift Allowance, etc.) */
+  extra_allowances: Reimbursement[]
   showTaxPage: boolean
   selectedTemplate: PayslipTemplateId
   /** null = auto-calculated from gross salary */
