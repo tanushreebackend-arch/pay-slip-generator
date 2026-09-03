@@ -16,8 +16,11 @@ import {
 } from '@/components/ui/table'
 
 export default function AdminSalariesPage() {
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const [employees, setEmployees] = useState<Employee[]>([])
   const [ctc, setCtc] = useState<Record<string, string>>({})
+  const [effectiveFrom, setEffectiveFrom] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
 
@@ -28,17 +31,20 @@ export default function AdminSalariesPage() {
       if (!res.ok) throw new Error('Failed to load employees')
       const rows: Employee[] = await res.json()
       setEmployees(rows)
-      const next: Record<string, string> = {}
+      const nextCtc: Record<string, string> = {}
+      const nextEff: Record<string, string> = {}
       for (const emp of rows) {
-        next[emp.id] = String(Math.round((emp.gross_salary || 0) * 12))
+        nextCtc[emp.id] = String(Math.round((emp.gross_salary || 0) * 12))
+        nextEff[emp.id] = todayStr
       }
-      setCtc(next)
+      setCtc(nextCtc)
+      setEffectiveFrom(nextEff)
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to load salaries'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [todayStr])
 
   useEffect(() => {
     load()
@@ -50,16 +56,24 @@ export default function AdminSalariesPage() {
       toast.error('Enter a valid annual CTC')
       return
     }
+    if (!effectiveFrom[id]) {
+      toast.error('Effective from date is required for salary changes')
+      return
+    }
     setSavingId(id)
     try {
       const res = await fetch(`/api/employees/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ annual_ctc: annual }),
+        body: JSON.stringify({
+          annual_ctc: annual,
+          effective_from: effectiveFrom[id],
+          salary_note: 'Salary update from Salaries page',
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to save salary')
-      toast.success('Salary updated')
+      toast.success('Salary updated (history saved for increments)')
       load()
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to save salary'))
@@ -73,7 +87,8 @@ export default function AdminSalariesPage() {
       <header>
         <h1 className="text-xl font-semibold text-text-primary">Employee Salaries</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Set each person&apos;s annual CTC. Monthly salary is CTC ÷ 12 and is what employees see in Finance.
+          Set annual CTC and effective date. Increments are stored in history so Finance shows the
+          correct pay per month. Monthly = CTC ÷ 12.
         </p>
       </header>
 
@@ -85,6 +100,7 @@ export default function AdminSalariesPage() {
               <TableHead>ID</TableHead>
               <TableHead>Department</TableHead>
               <TableHead>Annual CTC</TableHead>
+              <TableHead>Effective From</TableHead>
               <TableHead>Monthly Salary</TableHead>
               <TableHead />
             </TableRow>
@@ -92,13 +108,13 @@ export default function AdminSalariesPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-text-muted">
+                <TableCell colSpan={7} className="text-center text-text-muted">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-text-muted">
+                <TableCell colSpan={7} className="text-center text-text-muted">
                   No employees yet
                 </TableCell>
               </TableRow>
@@ -111,13 +127,22 @@ export default function AdminSalariesPage() {
                     <TableCell className="font-medium">{emp.name}</TableCell>
                     <TableCell className="text-text-muted">{emp.employee_id}</TableCell>
                     <TableCell>{emp.department || '—'}</TableCell>
-                    <TableCell className="w-44">
+                    <TableCell className="w-40">
                       <Input
                         type="number"
                         min="0"
                         step="1000"
                         value={ctc[emp.id] ?? ''}
                         onChange={(e) => setCtc((prev) => ({ ...prev, [emp.id]: e.target.value }))}
+                      />
+                    </TableCell>
+                    <TableCell className="w-40">
+                      <Input
+                        type="date"
+                        value={effectiveFrom[emp.id] ?? todayStr}
+                        onChange={(e) =>
+                          setEffectiveFrom((prev) => ({ ...prev, [emp.id]: e.target.value }))
+                        }
                       />
                     </TableCell>
                     <TableCell>{formatCurrency(monthly)}</TableCell>

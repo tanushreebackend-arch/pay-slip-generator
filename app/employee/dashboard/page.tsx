@@ -13,6 +13,7 @@ import {
   getAttendanceStatus,
   getWorkedMs,
   formatWorkedHours,
+  isWeekend,
   type AttendanceStatus,
   type LeaveCover,
 } from '@/lib/attendanceRules'
@@ -36,6 +37,7 @@ type AttendanceDay = {
 type Holiday = { id: string; name: string; date: string }
 
 type DashboardData = {
+  employee?: { joining_date?: string }
   pay_summary: PaySummary
   today_attendance: {
     check_in: string
@@ -100,6 +102,7 @@ const calendarColors: Record<DayStatus, string> = {
   ON_LEAVE: 'bg-blue-500 text-white',
   WEEK_OFF: 'bg-indigo-400 text-white',
   HOLIDAY: 'bg-yellow-400 text-white',
+  NOT_TRACKED: '',
   none: '',
 }
 
@@ -204,6 +207,8 @@ export default function EmployeeDashboardPage() {
     [data?.holidays]
   )
 
+  const joiningDate = data?.employee?.joining_date ?? null
+
   const todayStr = todayISTString()
   const todayStatus = getAttendanceStatus({
     date: todayStr,
@@ -211,6 +216,7 @@ export default function EmployeeDashboardPage() {
     checkOut: todayRecord?.check_out,
     holidayDates,
     leaves,
+    joiningDate,
   })
 
   const calendarData = useMemo(() => {
@@ -234,42 +240,37 @@ export default function EmployeeDashboardPage() {
       const date = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
       const isFuture =
         y > todayYear || (y === todayYear && m > todayMonth) || (y === todayYear && m === todayMonth && d > todayDay)
-      const dow = new Date(date + 'T12:00:00').getDay()
-      if (isFuture && !holidayDates.has(date) && dow !== 0 && dow !== 6) {
+      if (isFuture && !holidayDates.has(date) && !isWeekend(date)) {
         days.push({ day: d, status: 'none' })
         continue
       }
       const att = attMap.get(d)
+      const status = getAttendanceStatus({
+        date,
+        checkIn: att?.check_in,
+        checkOut: att?.check_out,
+        holidayDates,
+        leaves,
+        joiningDate,
+      })
       days.push({
         day: d,
-        status: getAttendanceStatus({
-          date,
-          checkIn: att?.check_in,
-          checkOut: att?.check_out,
-          holidayDates,
-          leaves,
-        }),
+        status: status === 'NOT_TRACKED' ? 'none' : status,
       })
     }
 
     return { firstDow, days }
-  }, [data?.month_attendance, holidayDates, leaves])
+  }, [data?.month_attendance, holidayDates, leaves, joiningDate])
 
   const attendanceRate = useMemo(() => {
-    const today = new Date()
-    const y = today.getFullYear()
-    const m = today.getMonth()
     let scored = 0
     let presentish = 0
-    for (const { day, status } of calendarData.days) {
-      if (day > today.getDate()) continue
-      if (status === 'HOLIDAY' || status === 'WEEK_OFF' || status === 'none') continue
+    for (const { status } of calendarData.days) {
+      if (status === 'HOLIDAY' || status === 'WEEK_OFF' || status === 'none' || status === 'NOT_TRACKED') continue
       scored += 1
       if (status === 'PRESENT' || status === 'LATE') presentish += 1
       if (status === 'HALF_DAY') presentish += 0.5
     }
-    void y
-    void m
     return scored > 0 ? Math.round((presentish / scored) * 100) : 0
   }, [calendarData])
 

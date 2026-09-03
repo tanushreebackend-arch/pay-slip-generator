@@ -115,6 +115,19 @@ export async function POST(request: Request) {
         },
       })
 
+      const effectiveFrom = joining_date
+        ? new Date(joining_date + 'T12:00:00')
+        : new Date()
+      await tx.salaryHistory.create({
+        data: {
+          employeeId: created.id,
+          monthlySalary: gross,
+          annualCtc: parseFloat((gross * 12).toFixed(2)),
+          effectiveFrom,
+          note: 'Initial salary',
+        },
+      })
+
       return created
     })
 

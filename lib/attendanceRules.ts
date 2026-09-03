@@ -1,9 +1,14 @@
+import { isWorkingDay } from '@/lib/workingDays'
+
 export const OFFICE_START_HOUR = 9
 export const OFFICE_END_HOUR = 18
 export const LATE_AFTER_HOUR = 10
 export const LATE_AFTER_MINUTE = 30
 export const HALF_DAY_AFTER_HOUR = 12
 export const MIN_FULL_DAY_MS = 4.5 * 60 * 60 * 1000
+
+/** Days before this are not marked Absent (portal launched; employees weren't using it yet). */
+export const ATTENDANCE_TRACKING_START = '2026-09-04'
 
 export type AttendanceStatus =
   | 'PRESENT'
@@ -13,6 +18,7 @@ export type AttendanceStatus =
   | 'ON_LEAVE'
   | 'HOLIDAY'
   | 'WEEK_OFF'
+  | 'NOT_TRACKED'
 
 export type LeaveCover = {
   from_date: string
@@ -29,6 +35,7 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   ON_LEAVE: 'On Leave',
   HOLIDAY: 'Holiday',
   WEEK_OFF: 'Week Off',
+  NOT_TRACKED: '—',
 }
 
 export const ATTENDANCE_STATUS_BADGE: Record<AttendanceStatus, string> = {
@@ -39,6 +46,7 @@ export const ATTENDANCE_STATUS_BADGE: Record<AttendanceStatus, string> = {
   ON_LEAVE: 'bg-blue-100 text-blue-700',
   HOLIDAY: 'bg-yellow-100 text-yellow-800',
   WEEK_OFF: 'bg-indigo-100 text-indigo-700',
+  NOT_TRACKED: 'bg-gray-100 text-gray-500',
 }
 
 export const ATTENDANCE_FILTER_OPTIONS: AttendanceStatus[] = [
@@ -66,9 +74,19 @@ function getISTMinutes(iso: string): number {
   return hour * 60 + minute
 }
 
+/** Week off: every Sunday + 2nd & 4th Saturday only (1st/3rd/5th Sat are working). */
 export function isWeekend(dateStr: string): boolean {
-  const dow = new Date(dateStr + 'T12:00:00').getDay()
-  return dow === 0 || dow === 6
+  return !isWorkingDay(new Date(dateStr + 'T12:00:00'))
+}
+
+/** Attendance is scored only from portal go-live and on/after joining date. */
+export function isAttendanceTracked(dateStr: string, joiningDate?: string | null): boolean {
+  if (dateStr < ATTENDANCE_TRACKING_START) return false
+  if (joiningDate) {
+    const join = dateKey(joiningDate)
+    if (dateStr < join) return false
+  }
+  return true
 }
 
 export function leaveOnDate(
@@ -103,9 +121,15 @@ export function getAttendanceStatus(opts: {
   checkOut?: string | null
   holidayDates: Set<string> | string[]
   leaves: LeaveCover[]
+  joiningDate?: string | null
 }): AttendanceStatus {
   const holidays =
     opts.holidayDates instanceof Set ? opts.holidayDates : new Set(opts.holidayDates)
+
+  // Before joining / before portal launch: never mark Absent (unless they checked in)
+  if (!isAttendanceTracked(opts.date, opts.joiningDate)) {
+    if (!opts.checkIn) return 'NOT_TRACKED'
+  }
 
   if (holidays.has(opts.date)) return 'HOLIDAY'
   if (isWeekend(opts.date)) return 'WEEK_OFF'

@@ -155,6 +155,21 @@ export async function PUT(request: Request, { params }: RouteContext) {
         },
       })
 
+      if (Number(existing.grossSalary) !== gross) {
+        const effectiveFrom = body.effective_from
+          ? new Date(String(body.effective_from) + 'T12:00:00')
+          : new Date()
+        await tx.salaryHistory.create({
+          data: {
+            employeeId: params.id,
+            monthlySalary: gross,
+            annualCtc: parseFloat((gross * 12).toFixed(2)),
+            effectiveFrom,
+            note: body.salary_note || 'Salary update',
+          },
+        })
+      }
+
       if (existing.user && loginEmail && loginEmail !== existing.user.email) {
         await tx.user.update({
           where: { id: existing.user.id },
@@ -197,9 +212,27 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Valid annual CTC is required' }, { status: 400 })
   }
 
-  const employee = await prisma.employee.update({
-    where: { id: params.id },
-    data: { grossSalary: gross },
+  const effectiveFrom = body.effective_from
+    ? new Date(String(body.effective_from) + 'T12:00:00')
+    : new Date()
+
+  const employee = await prisma.$transaction(async (tx) => {
+    const updated = await tx.employee.update({
+      where: { id: params.id },
+      data: { grossSalary: gross },
+    })
+    if (Number(existing.grossSalary) !== gross) {
+      await tx.salaryHistory.create({
+        data: {
+          employeeId: params.id,
+          monthlySalary: gross,
+          annualCtc: parseFloat((gross * 12).toFixed(2)),
+          effectiveFrom,
+          note: body.salary_note || 'Salary increment / update',
+        },
+      })
+    }
+    return updated
   })
   return NextResponse.json(mapEmployee(employee))
 }

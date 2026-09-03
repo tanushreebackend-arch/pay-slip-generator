@@ -47,6 +47,7 @@ export default function EmployeeAttendancePage() {
   const [loading, setLoading] = useState(true)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth())
+  const [joiningDate, setJoiningDate] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('All Statuses')
 
   const load = useCallback(async () => {
@@ -55,15 +56,20 @@ export default function EmployeeAttendancePage() {
       const from = `${year}-${String(month + 1).padStart(2, '0')}-01`
       const lastDay = new Date(year, month + 1, 0).getDate()
       const to = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-      const [attRes, leaveRes, holRes] = await Promise.all([
+      const [attRes, leaveRes, holRes, dashRes] = await Promise.all([
         fetch(`/api/attendance?from=${from}&to=${to}`),
         fetch('/api/leaves'),
         fetch(`/api/holidays?year=${year}`),
+        fetch('/api/employee/dashboard'),
       ])
       if (!attRes.ok) throw new Error('Failed to load attendance')
       setRecords(await attRes.json())
       if (leaveRes.ok) setLeaves(await leaveRes.json())
       if (holRes.ok) setHolidays(await holRes.json())
+      if (dashRes.ok) {
+        const dash = await dashRes.json()
+        setJoiningDate(dash.employee?.joining_date ?? null)
+      }
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to load attendance'))
     } finally {
@@ -98,12 +104,13 @@ export default function EmployeeAttendancePage() {
         checkOut: record?.check_out,
         holidayDates,
         leaves,
+        joiningDate,
       })
-      if (status === 'WEEK_OFF' || status === 'HOLIDAY') continue
+      if (status === 'WEEK_OFF' || status === 'HOLIDAY' || status === 'NOT_TRACKED') continue
       list.push({ date, record, status })
     }
     return list.reverse()
-  }, [attMap, holidayDates, leaves, month, pastDays, year])
+  }, [attMap, holidayDates, leaves, joiningDate, month, pastDays, year])
 
   const presentDays = rows.filter((r) => r.status === 'PRESENT').length
   const lateDays = rows.filter((r) => r.status === 'LATE').length

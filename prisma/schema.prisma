@@ -51,6 +51,7 @@ model Employee {
   user              User?
   attendanceRecords AttendanceRecord[]
   leaveRequests     LeaveRequest[]
+  salaryHistory     SalaryHistory[]
 
   @@map("employees")
 }
@@ -115,4 +116,18 @@ model PublicHoliday {
 
   @@unique([date])
   @@map("public_holidays")
+}
+
+model SalaryHistory {
+  id            String   @id @default(uuid())
+  employeeId    String   @map("employee_id")
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  monthlySalary Decimal  @map("monthly_salary") @db.Decimal(12, 2)
+  annualCtc     Decimal  @map("annual_ctc") @db.Decimal(12, 2)
+  effectiveFrom DateTime @map("effective_from") @db.Date
+  note          String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([employeeId, effectiveFrom])
+  @@map("salary_history")
 }
