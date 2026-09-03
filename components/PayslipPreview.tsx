@@ -286,7 +286,7 @@ export default function PayslipPreview({
   const empCells: EmpCell[] = [
     { label: 'Employee Code', value: emp.employee_id },
     { label: 'Payment Mode', value: emp.payment_mode },
-    { label: 'Working Days', value: String(c.totalWorkingDays) },
+    { label: 'Days in Month', value: String(c.totalWorkingDays) },
     { label: 'Employee Name', value: emp.name },
     { label: 'Bank Name', value: emp.bank_name },
     { label: 'Payable Days', value: String(c.effectivePaidDays) },

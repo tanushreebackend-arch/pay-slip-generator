@@ -14,7 +14,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3002](http://localhost:3002) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
@@ -172,7 +172,7 @@ Default admin: `admin@company.com` / `Admin@123`
 ```env
 DATABASE_URL=postgresql://...
 NEXTAUTH_SECRET=<random-32-char-string>
-NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_URL=http://localhost:3002
 ```
 
 ---
@@ -186,7 +186,7 @@ npm run db:seed
 npm run dev
 ```
 
-Open http://localhost:3000 and sign in as admin.
+Open http://localhost:3002 and sign in as admin.
 
 ---
 

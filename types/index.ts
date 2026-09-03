@@ -83,6 +83,8 @@ export interface PayslipData {
   selectedTemplate: PayslipTemplateId
   /** null = auto-calculated from gross salary */
   medical_allowance: number | null
+  conveyance_allowance: number | null
+  special_allowance: number | null
   /** null = auto 12% of basic */
   pf_amount: number | null
 }

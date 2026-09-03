@@ -1,6 +1,6 @@
-import { countWorkingDaysInRange } from '@/lib/workingDays'
-
 export const PROFESSIONAL_TAX = 200
+/** Indian payroll month is treated as a 30-day cycle, not office working days. */
+export const PAY_CYCLE_DAYS = 30
 
 const MEDICAL_RATIO = 1250 / 52000
 const CONVEYANCE_RATIO = 1600 / 52000
@@ -9,8 +9,53 @@ export function getDefaultMedicalAllowance(grossSalary: number): number {
   return parseFloat((grossSalary * MEDICAL_RATIO).toFixed(2))
 }
 
+export function getDefaultConveyanceAllowance(grossSalary: number): number {
+  return parseFloat((grossSalary * CONVEYANCE_RATIO).toFixed(2))
+}
+
+export function getDefaultSpecialAllowance(
+  grossSalary: number,
+  medicalAllowance?: number | null,
+  conveyanceAllowance?: number | null
+): number {
+  const stdBasic = parseFloat((grossSalary * 0.5).toFixed(2))
+  const stdHRA = parseFloat((stdBasic * 0.4).toFixed(2))
+  const medical =
+    medicalAllowance != null && !Number.isNaN(medicalAllowance)
+      ? parseFloat(Number(medicalAllowance).toFixed(2))
+      : getDefaultMedicalAllowance(grossSalary)
+  const conveyance =
+    conveyanceAllowance != null && !Number.isNaN(conveyanceAllowance)
+      ? parseFloat(Number(conveyanceAllowance).toFixed(2))
+      : getDefaultConveyanceAllowance(grossSalary)
+  return parseFloat((grossSalary - stdBasic - stdHRA - medical - conveyance).toFixed(2))
+}
+
 export function getDefaultPfAmount(grossSalary: number): number {
   return parseFloat((grossSalary * 0.5 * 0.12).toFixed(2))
+}
+
+function inclusiveCalendarDays(fromDate: string, toDate: string): number {
+  const from = new Date(fromDate + 'T12:00:00')
+  const to = new Date(toDate + 'T12:00:00')
+  if (to < from) return 0
+  return Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
+}
+
+function isFullCalendarMonth(fromDate: string, toDate: string): boolean {
+  const from = new Date(fromDate + 'T12:00:00')
+  const to = new Date(toDate + 'T12:00:00')
+  if (from.getFullYear() !== to.getFullYear() || from.getMonth() !== to.getMonth()) {
+    return false
+  }
+  const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate()
+  return from.getDate() === 1 && to.getDate() === lastDay
+}
+
+/** Days credited in the 30-day cycle for this from/to range (before LOP). */
+export function getPayCycleDaysInPeriod(fromDate: string, toDate: string): number {
+  if (isFullCalendarMonth(fromDate, toDate)) return PAY_CYCLE_DAYS
+  return Math.min(inclusiveCalendarDays(fromDate, toDate), PAY_CYCLE_DAYS)
 }
 
 export type SalaryLineItem = { label: string; amount: number }
@@ -20,6 +65,10 @@ export type SalaryCalculationOptions = {
   reimbursements?: SalaryLineItem[]
   /** Override standard medical allowance (monthly gross component) */
   medicalAllowance?: number | null
+  /** Override standard conveyance / convenience allowance (monthly) */
+  conveyanceAllowance?: number | null
+  /** Override standard special allowance (monthly) */
+  specialAllowance?: number | null
   /** Override PF employee deduction (fixed amount instead of 12% of basic) */
   pfAmount?: number | null
 }
@@ -39,20 +88,25 @@ export function calculateSalary(
   const month = from.getMonth()
   const calendarDaysInMonth = new Date(year, month + 1, 0).getDate()
 
-  const totalWorkingDays = countWorkingDaysInRange(fromDate, toDate)
-  const effectivePaidDays = parseFloat(Math.max(0, totalWorkingDays - lopDays).toFixed(1))
-  const ratio = totalWorkingDays > 0 ? effectivePaidDays / totalWorkingDays : 1
+  const daysInPeriod = getPayCycleDaysInPeriod(fromDate, toDate)
+  const totalWorkingDays = PAY_CYCLE_DAYS
+  const effectivePaidDays = parseFloat(Math.max(0, daysInPeriod - lopDays).toFixed(1))
+  const ratio = PAY_CYCLE_DAYS > 0 ? effectivePaidDays / PAY_CYCLE_DAYS : 1
 
   const stdBasic = parseFloat((grossSalary * 0.5).toFixed(2))
   const stdHRA = parseFloat((stdBasic * 0.4).toFixed(2))
   const stdMedical =
     options.medicalAllowance != null && !Number.isNaN(options.medicalAllowance)
       ? parseFloat(Number(options.medicalAllowance).toFixed(2))
-      : parseFloat((grossSalary * MEDICAL_RATIO).toFixed(2))
-  const stdConveyance = parseFloat((grossSalary * CONVEYANCE_RATIO).toFixed(2))
-  const stdSpecial = parseFloat(
-    (grossSalary - stdBasic - stdHRA - stdMedical - stdConveyance).toFixed(2)
-  )
+      : getDefaultMedicalAllowance(grossSalary)
+  const stdConveyance =
+    options.conveyanceAllowance != null && !Number.isNaN(options.conveyanceAllowance)
+      ? parseFloat(Number(options.conveyanceAllowance).toFixed(2))
+      : getDefaultConveyanceAllowance(grossSalary)
+  const stdSpecial =
+    options.specialAllowance != null && !Number.isNaN(options.specialAllowance)
+      ? parseFloat(Number(options.specialAllowance).toFixed(2))
+      : getDefaultSpecialAllowance(grossSalary, stdMedical, stdConveyance)
 
   const actualBasic = parseFloat((stdBasic * ratio).toFixed(2))
   const actualHRA = parseFloat((stdHRA * ratio).toFixed(2))

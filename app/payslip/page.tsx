@@ -4,9 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSettings } from '@/context/SettingsContext'
-import { calculateSalary, getDefaultMedicalAllowance, getDefaultPfAmount } from '@/lib/salaryCalc'
+import { calculateSalary, getDefaultConveyanceAllowance, getDefaultMedicalAllowance, getDefaultPfAmount, getDefaultSpecialAllowance, getPayCycleDaysInPeriod, PAY_CYCLE_DAYS } from '@/lib/salaryCalc'
 import { downloadPayslipPdf } from '@/lib/downloadPayslip'
-import { countWorkingDaysInRange } from '@/lib/workingDays'
 import { getErrorMessage, MONTHS, getMonthDateRange } from '@/lib/utils'
 import { calculateMonthlyLeaveSummary, type LeaveRecordInput } from '@/lib/leavePolicy'
 import {
@@ -55,6 +54,8 @@ const defaultPayslip = (): PayslipData => ({
   showTaxPage: false,
   selectedTemplate: 4,
   medical_allowance: null,
+  conveyance_allowance: null,
+  special_allowance: null,
   pf_amount: null,
 })
 
@@ -254,6 +255,8 @@ export default function PayslipPage() {
             finalSettlement: payslip.final_settlement,
             reimbursements: payslip.reimbursements,
             medicalAllowance: payslip.medical_allowance,
+            conveyanceAllowance: payslip.conveyance_allowance,
+            specialAllowance: payslip.special_allowance,
             pfAmount: payslip.pf_amount,
           }
         )
@@ -290,9 +293,9 @@ export default function PayslipPage() {
     documentFontOverride: documentFont,
   }
 
-  const workingDaysInPeriod =
+  const payCycleDaysInPeriod =
     payslip.from_date && payslip.to_date
-      ? countWorkingDaysInRange(payslip.from_date, payslip.to_date)
+      ? getPayCycleDaysInPeriod(payslip.from_date, payslip.to_date)
       : null
 
   const handleGenerate = async () => {
@@ -409,9 +412,13 @@ export default function PayslipPage() {
                 setSelected(emp)
                 if (!emp) return
                 const gross = Number(emp.gross_salary)
+                const medical = getDefaultMedicalAllowance(gross)
+                const conveyance = getDefaultConveyanceAllowance(gross)
                 setPayslip((prev) => ({
                   ...prev,
-                  medical_allowance: getDefaultMedicalAllowance(gross),
+                  medical_allowance: medical,
+                  conveyance_allowance: conveyance,
+                  special_allowance: getDefaultSpecialAllowance(gross, medical, conveyance),
                   pf_amount: getDefaultPfAmount(gross),
                 }))
                 setGenerated(false)
@@ -494,10 +501,11 @@ export default function PayslipPage() {
                       ` · Excess: ${leaveSummary.excessLeaveDays}d (auto-filled)`}
                   </p>
                 )}
-                {workingDaysInPeriod != null && (
+                {payCycleDaysInPeriod != null && (
                   <p className="text-[11px] text-text-muted">
-                    Total working days in period: {workingDaysInPeriod} (Sun off; 2nd &amp; 4th Sat
-                    off)
+                    30-day pay cycle: {payCycleDaysInPeriod} payable day
+                    {payCycleDaysInPeriod === 1 ? '' : 's'} in this period (full month ={' '}
+                    {PAY_CYCLE_DAYS} days)
                   </p>
                 )}
               </div>
@@ -519,8 +527,8 @@ export default function PayslipPage() {
           <div>
             <SectionHeader title="Salary Components (Editable)" />
             <p className="mb-3 text-[11px] text-text-muted">
-              Override medical allowance or PF amount for this payslip. Values pre-fill from gross
-              salary; edit as needed (e.g. PF ₹1,200).
+              Amounts you enter here are printed on the payslip. Values pre-fill from gross salary;
+              edit any allowance or PF as needed.
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -529,10 +537,40 @@ export default function PayslipPage() {
                   type="number"
                   min={0}
                   step="0.01"
-                  value={payslip.medical_allowance ?? ''}
+                  value={payslip.medical_allowance ?? salaryCalc?.stdMedical ?? ''}
                   onChange={(e) =>
                     updatePayslip(
                       'medical_allowance',
+                      e.target.value === '' ? null : parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Conveyance Allowance (monthly)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={payslip.conveyance_allowance ?? salaryCalc?.stdConveyance ?? ''}
+                  onChange={(e) =>
+                    updatePayslip(
+                      'conveyance_allowance',
+                      e.target.value === '' ? null : parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Special Allowance (monthly)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={payslip.special_allowance ?? salaryCalc?.stdSpecial ?? ''}
+                  onChange={(e) =>
+                    updatePayslip(
+                      'special_allowance',
                       e.target.value === '' ? null : parseFloat(e.target.value) || 0
                     )
                   }
@@ -544,7 +582,10 @@ export default function PayslipPage() {
                   type="number"
                   min={0}
                   step="0.01"
-                  value={payslip.pf_amount ?? ''}
+                  value={
+                    payslip.pf_amount ??
+                    (selected ? getDefaultPfAmount(Number(selected.gross_salary)) : '')
+                  }
                   onChange={(e) =>
                     updatePayslip(
                       'pf_amount',

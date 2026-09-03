@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { getSession, signIn } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import toast from 'react-hot-toast'
 import Box from '@mui/material/Box'
 import Card from '@mui/material/Card'
@@ -15,8 +15,18 @@ import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined'
 
+function nextPathAfterLogin(callbackUrl: string | null, role?: string) {
+  const fallback = role === 'ADMIN' ? '/admin/dashboard' : '/employee/dashboard'
+  if (!callbackUrl || !callbackUrl.startsWith('/') || callbackUrl.startsWith('//')) {
+    return fallback
+  }
+  if (callbackUrl === '/login' || callbackUrl.startsWith('/login?')) {
+    return fallback
+  }
+  return callbackUrl
+}
+
 export default function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -45,13 +55,21 @@ export default function LoginForm() {
       })
 
       if (result?.error) {
-        toast.error('Invalid email or password')
+        toast.error(
+          result.error === 'CredentialsSignin'
+            ? 'Invalid email or password'
+            : 'Could not reach the database. Check DATABASE_URL and that Neon is awake, then try again.'
+        )
+        setLoading(false)
         return
       }
 
-      router.push(searchParams.get('callbackUrl') || '/')
-      router.refresh()
-    } finally {
+      const session = await getSession()
+      window.location.assign(
+        nextPathAfterLogin(searchParams.get('callbackUrl'), session?.user?.role)
+      )
+    } catch {
+      toast.error('Sign in failed. Please try again.')
       setLoading(false)
     }
   }

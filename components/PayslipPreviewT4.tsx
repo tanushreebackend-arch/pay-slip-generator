@@ -205,7 +205,6 @@ export default function PayslipPreviewT4({
   const c = calc
   const monthShort = month.slice(0, 3).toUpperCase()
   const netWords = numberToIndianWords(c.netPay)
-  const costWords = numberToIndianWords(c.totalCost)
 
   const earnings: { label: string; amount: number }[] = [
     { label: 'Basic', amount: c.actualBasic },
@@ -299,7 +298,7 @@ export default function PayslipPreviewT4({
           }}
         >
           <GridCell label="Actual Payable Days" value={fmtDays(c.effectivePaidDays)} />
-          <GridCell label="Total Working Days" value={fmtDays(c.totalWorkingDays)} />
+          <GridCell label="Days in Month" value={fmtDays(c.totalWorkingDays)} />
           <GridCell label="Loss Of Pay Days" value={fmtDays(c.lopDays)} />
           <GridCell label="Days Payable" value={String(c.daysPayable)} />
         </div>
@@ -312,13 +311,13 @@ export default function PayslipPreviewT4({
             {earnings.map((e) => (
               <LineRow key={e.label} label={e.label} amount={e.amount} />
             ))}
-            <LineRow label="Total Earnings (A)" amount={c.totalEarningsA} bold />
+            <LineRow label="Total Earnings" amount={c.totalEarningsA} bold />
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <SectionTitle>PF Deductions</SectionTitle>
             <LineRow label="PF Employee" amount={c.pfEmployee} />
-            <LineRow label="Total Pf Deductions (B)" amount={c.totalPfDeductionsB} bold />
+            <LineRow label="Total PF Deductions" amount={c.totalPfDeductionsB} bold />
 
             <SectionTitle>Taxes &amp; other Deductions</SectionTitle>
             <LineRow label="Professional Tax" amount={c.professionalTax} />
@@ -327,7 +326,7 @@ export default function PayslipPreviewT4({
               .map((d, i) => (
                 <LineRow key={i} label={d.label} amount={Number(d.amount) || 0} />
               ))}
-            <LineRow label="Total Taxes &amp; Other Deductions (C)" amount={c.totalTaxesDeductionsC} bold />
+            <LineRow label="Total Taxes &amp; Other Deductions" amount={c.totalTaxesDeductionsC} bold />
 
             {c.reimbursements.length > 0 ? (
               <>
@@ -335,7 +334,7 @@ export default function PayslipPreviewT4({
                 {c.reimbursements.map((r, i) => (
                   <LineRow key={i} label={r.label} amount={r.amount} />
                 ))}
-                <LineRow label="Total Reimbursements (D)" amount={c.totalReimbursementsD} bold />
+                <LineRow label="Total Reimbursements" amount={c.totalReimbursementsD} bold />
               </>
             ) : null}
           </div>
@@ -350,27 +349,9 @@ export default function PayslipPreviewT4({
             marginBottom: 10,
           }}
         >
-          <LineRow label="Net Salary Payable (A - B - C + D)" amount={c.netPay} bold />
+          <LineRow label="Net Salary Payable" amount={c.netPay} bold />
           <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6, lineHeight: 1.4 }}>
             Net Salary in words: {netWords}
-          </div>
-        </div>
-
-        <SectionTitle>Other Components</SectionTitle>
-        <LineRow label="PF - Employer" amount={c.pfEmployer} />
-        <LineRow label="PF - Other Charges" amount={c.pfOtherCharges} />
-        <LineRow label="Total Other Components (E)" amount={c.totalOtherComponentsE} bold />
-
-        <div
-          style={{
-            backgroundColor: '#f3f4f6',
-            padding: '10px 14px',
-            marginTop: 10,
-          }}
-        >
-          <LineRow label="Total Cost (A + E)" amount={c.totalCost} bold />
-          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6, lineHeight: 1.4 }}>
-            Total Cost in words: {costWords}
           </div>
         </div>
 
