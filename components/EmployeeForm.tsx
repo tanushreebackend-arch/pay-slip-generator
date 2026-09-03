@@ -31,7 +31,6 @@ const emptyForm = {
   email: '',
   phone: '',
   bank_name: '',
-  bank_account: '',
   pan_number: '',
   pf_number: '',
   uan: '',
@@ -68,7 +67,6 @@ export default function EmployeeForm({
         email: employee.email || '',
         phone: employee.phone || '',
         bank_name: employee.bank_name || '',
-        bank_account: employee.bank_account || '',
         pan_number: employee.pan_number || '',
         pf_number: employee.pf_number || '',
         uan: employee.uan || '',
@@ -117,7 +115,7 @@ export default function EmployeeForm({
         email: form.email.trim(),
         phone: form.phone || null,
         bank_name: form.bank_name || null,
-        bank_account: form.bank_account || null,
+        bank_account: employee?.bank_account || null,
         pan_number: form.pan_number || null,
         pf_number: form.pf_number || null,
         uan: form.uan || null,
@@ -206,13 +204,6 @@ export default function EmployeeForm({
             <Input
               value={form.bank_name}
               onChange={(e) => update('bank_name', e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Bank Account Number</Label>
-            <Input
-              value={form.bank_account}
-              onChange={(e) => update('bank_account', e.target.value)}
             />
           </div>
           <div className="space-y-2">
