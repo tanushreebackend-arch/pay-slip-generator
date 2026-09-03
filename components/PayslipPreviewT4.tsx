@@ -2,28 +2,63 @@
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
 import { numberToIndianWords } from '@/lib/numberToWords'
-import { formatDateDDMonthYYYY } from '@/lib/utils'
+import { MONTHS } from '@/lib/utils'
 import type { LeaveDetailRow } from '@/lib/leaveDetails'
 import type { PayslipPreviewProps } from '@/types'
 
+/** A4 at 96dpi; 1 PDF point ≈ 1.334 CSS px (source payslip is 595×842 pt). */
 const PAGE_STYLE: React.CSSProperties = {
   width: 794,
   minHeight: 1123,
   height: 1123,
   backgroundColor: '#fff',
-  fontSize: 11,
+  fontSize: 13,
   color: '#000',
-  padding: '32px 40px',
+  padding: '26px 48px 48px',
   boxSizing: 'border-box',
   overflow: 'hidden',
+}
+
+const LABEL: React.CSSProperties = {
+  fontSize: 11,
+  color: '#858585',
+  lineHeight: 1.2,
+  marginBottom: 3,
+  fontWeight: 400,
+}
+
+const VALUE: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 400,
+  color: '#000',
+  lineHeight: 1.25,
+  wordBreak: 'break-word',
+}
+
+const HAIRLINE_BLACK: React.CSSProperties = {
+  border: 'none',
+  borderTop: '1px solid #000',
+  margin: 0,
+  height: 0,
+}
+
+const HAIRLINE_GRAY: React.CSSProperties = {
+  border: 'none',
+  borderTop: '1px solid #dcdcdc',
+  margin: 0,
+  height: 0,
 }
 
 function fmt(n: number): string {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-function fmtDays(n: number): string {
+function fmtDays1(n: number): string {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+function fmtDays2(n: number): string {
+  return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function fmtLeave(n: number): string {
@@ -31,65 +66,87 @@ function fmtLeave(n: number): string {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 11,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        marginBottom: 6,
-        marginTop: 10,
-      }}
-    >
-      {children}
-    </div>
-  )
+function fmtJoinDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr + 'T12:00:00')
+  if (Number.isNaN(d.getTime())) return dateStr
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+function toPayslipWords(amount: number): string {
+  return numberToIndianWords(amount)
+    .replace(/ and (.+) Paise Only$/i, ' AND $1 paise only')
+    .replace(/ Only$/, ' only')
 }
 
 function LineRow({
   label,
   amount,
-  bold,
+  boldLabel,
 }: {
   label: string
   amount?: number
-  bold?: boolean
+  boldLabel?: boolean
 }) {
   return (
     <div
       style={{
         display: 'flex',
         justifyContent: 'space-between',
+        alignItems: 'baseline',
         gap: 12,
-        padding: '3px 0',
-        fontSize: 11,
-        fontWeight: bold ? 700 : 400,
+        minHeight: 21,
+        padding: '1px 0',
+        fontSize: 13,
+        lineHeight: 1.35,
       }}
     >
-      <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
-      {amount !== undefined ? <span style={{ flexShrink: 0 }}>{fmt(amount)}</span> : null}
+      <span style={{ flex: 1, minWidth: 0, fontWeight: boldLabel ? 700 : 400 }}>{label}</span>
+      {amount !== undefined ? (
+        <span style={{ flexShrink: 0, fontWeight: 400, fontVariantNumeric: 'tabular-nums' }}>{fmt(amount)}</span>
+      ) : null}
     </div>
   )
 }
 
 function GridCell({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ padding: '4px 0', minWidth: 0 }}>
-      <div
-        style={{
-          fontSize: 10,
-          color: '#6b7280',
-          marginBottom: 2,
-          lineHeight: 1.3,
-          whiteSpace: 'normal',
-        }}
-      >
-        {label}
+    <div style={{ minWidth: 0, padding: '2px 8px 2px 0' }}>
+      <div style={LABEL}>{label}</div>
+      <div style={VALUE}>{value || '—'}</div>
+    </div>
+  )
+}
+
+function SummaryBand({
+  label,
+  amount,
+  wordsLabel,
+  words,
+}: {
+  label: string
+  amount: number
+  wordsLabel: string
+  words: string
+}) {
+  const row: React.CSSProperties = {
+    display: 'grid',
+    gridTemplateColumns: '40% 1fr',
+    gap: 12,
+    backgroundColor: '#f8f8f9',
+    padding: '8px 13px',
+    fontSize: 13,
+    lineHeight: 1.4,
+  }
+  return (
+    <div>
+      <div style={row}>
+        <div>{label}</div>
+        <div>{fmt(amount)}</div>
       </div>
-      <div style={{ fontSize: 11, fontWeight: 600, lineHeight: 1.3, wordBreak: 'break-word' }}>
-        {value || '—'}
+      <div style={{ ...row, padding: '10px 13px', minHeight: 47, alignItems: 'start' }}>
+        <div>{wordsLabel}</div>
+        <div style={{ fontWeight: 700 }}>{words}</div>
       </div>
     </div>
   )
@@ -102,63 +159,69 @@ function LeaveDetailsPage({
   rows: LeaveDetailRow[]
   fontFamily: string
 }) {
-  const thStyle: React.CSSProperties = {
-    border: '1px solid #d1d5db',
-    padding: '8px 6px',
-    fontSize: 10,
-    fontWeight: 700,
-    textTransform: 'uppercase',
+  const cell: React.CSSProperties = {
+    border: '0.75px solid #d3d3d3',
+    padding: '4px 4px',
+    fontSize: 11,
     textAlign: 'center',
-    backgroundColor: '#fff',
-    lineHeight: 1.3,
-  }
-
-  const tdStyle: React.CSSProperties = {
-    border: '1px solid #d1d5db',
-    padding: '7px 6px',
-    fontSize: 10,
-    textAlign: 'center',
-    lineHeight: 1.3,
-  }
-
-  const tdLeftStyle: React.CSSProperties = {
-    ...tdStyle,
-    textAlign: 'left',
-    fontWeight: 500,
+    lineHeight: 1.25,
+    fontWeight: 400,
+    height: 20,
   }
 
   return (
-    <div className="payslip-t4-page payslip-page" style={{ ...PAGE_STYLE, fontFamily }}>
-      <SectionTitle>Leave Details</SectionTitle>
+    <div
+      className="payslip-t4-page payslip-page"
+      style={{ ...PAGE_STYLE, fontFamily, padding: '97px 48px 48px' }}
+    >
+      <div style={{ fontSize: 13, fontWeight: 400, marginBottom: 12, letterSpacing: 0 }}>
+        LEAVE DETAILS
+      </div>
       <table
         style={{
           width: '100%',
           borderCollapse: 'collapse',
-          marginTop: 8,
           tableLayout: 'fixed',
         }}
       >
+        <colgroup>
+          <col style={{ width: '21%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '10%' }} />
+          <col style={{ width: '11%' }} />
+          <col style={{ width: '24%' }} />
+          <col style={{ width: '11%' }} />
+        </colgroup>
         <thead>
           <tr>
-            <th style={{ ...thStyle, width: '22%', textAlign: 'left' }}>Leave Type</th>
-            <th style={thStyle}>Opening</th>
-            <th style={thStyle}>Accrued</th>
-            <th style={thStyle}>Credit</th>
-            <th style={thStyle}>Availed</th>
-            <th style={thStyle}>Expired/Encashed</th>
-            <th style={thStyle}>Closing</th>
+            {['LEAVE TYPE', 'OPENING', 'ACCRUED', 'CREDIT', 'AVAILED', 'EXPIRED/ENCASHED', 'CLOSING'].map(
+              (h) => (
+                <th
+                  key={h}
+                  style={{
+                    ...cell,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    height: 19,
+                  }}
+                >
+                  {h}
+                </th>
+              )
+            )}
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.leaveType}>
-              <td style={tdLeftStyle}>{row.leaveType}</td>
-              <td style={tdStyle}>{fmtLeave(row.opening)}</td>
-              <td style={tdStyle}>{fmtLeave(row.accrued)}</td>
-              <td style={tdStyle}>{fmtLeave(row.credit)}</td>
-              <td style={tdStyle}>{fmtLeave(row.availed)}</td>
-              <td style={tdStyle}>{fmtLeave(row.expiredEncashed)}</td>
-              <td style={tdStyle}>{fmtLeave(row.closing)}</td>
+              <td style={cell}>{row.leaveType}</td>
+              <td style={cell}>{fmtLeave(row.opening)}</td>
+              <td style={cell}>{fmtLeave(row.accrued)}</td>
+              <td style={cell}>{fmtLeave(row.credit)}</td>
+              <td style={cell}>{fmtLeave(row.availed)}</td>
+              <td style={cell}>{fmtLeave(row.expiredEncashed)}</td>
+              <td style={cell}>{fmtLeave(row.closing)}</td>
             </tr>
           ))}
         </tbody>
@@ -204,7 +267,7 @@ export default function PayslipPreviewT4({
   const emp = employee
   const c = calc
   const monthShort = month.slice(0, 3).toUpperCase()
-  const netWords = numberToIndianWords(c.netPay)
+  const netWords = toPayslipWords(c.netPay)
 
   const earnings: { label: string; amount: number }[] = [
     { label: 'Basic', amount: c.actualBasic },
@@ -217,11 +280,10 @@ export default function PayslipPreviewT4({
     earnings.push({ label: 'Final Settlement', amount: c.finalSettlement })
   }
 
-  const hrLine: React.CSSProperties = {
-    border: 'none',
-    borderTop: '1px solid #000',
-    margin: '8px 0',
-  }
+  const addressLines = (settings.address || '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean)
 
   return (
     <div
@@ -235,12 +297,18 @@ export default function PayslipPreviewT4({
     >
       <div className="payslip-t4-page payslip-page" style={pageStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>{emp.name}</div>
-            <div style={{ fontSize: 12, fontWeight: 700 }}>{settings.company_name || 'Company Name'}</div>
-            {settings.address ? (
-              <div style={{ fontSize: 10, lineHeight: 1.5, maxWidth: 360, marginTop: 2 }}>
-                {settings.address}
+          <div style={{ minWidth: 0, flex: 1, paddingTop: 2 }}>
+            <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 0, lineHeight: 1.1, marginBottom: 22 }}>
+              PAYSLIP {monthShort} {year}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 400, lineHeight: 1.3 }}>
+              {(settings.company_name || 'Company Name').toUpperCase()}
+            </div>
+            {addressLines.length > 0 ? (
+              <div style={{ fontSize: 10, lineHeight: 1.65, marginTop: 8, maxWidth: 420, fontWeight: 400 }}>
+                {addressLines.map((line, i) => (
+                  <div key={i}>{line.toUpperCase()}</div>
+                ))}
               </div>
             ) : null}
           </div>
@@ -249,127 +317,124 @@ export default function PayslipPreviewT4({
               src={settings.logo_url}
               alt="Logo"
               crossOrigin="anonymous"
-              style={{ height: 56, objectFit: 'contain', flexShrink: 0 }}
+              style={{ width: 120, height: 120, objectFit: 'contain', flexShrink: 0 }}
             />
           ) : null}
         </div>
 
-        <div
-          style={{
-            textAlign: 'center',
-            fontSize: 14,
-            fontWeight: 700,
-            margin: '16px 0 12px',
-            letterSpacing: '0.5px',
-          }}
-        >
-          PAYSLIP {monthShort} {year}
+        <div style={{ fontSize: 13, fontWeight: 700, marginTop: 28, marginBottom: 8, letterSpacing: 0.2 }}>
+          {emp.name.toUpperCase()}
         </div>
-
-        <hr style={hrLine} />
+        <hr style={HAIRLINE_BLACK} />
 
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-            gap: '8px 16px',
-            marginBottom: 8,
+            padding: '8px 0 6px',
           }}
         >
           <GridCell label="Employee Number" value={emp.employee_id} />
-          <GridCell label="Date Joined" value={formatDateDDMonthYYYY(emp.joining_date)} />
+          <GridCell label="Date Joined" value={fmtJoinDate(emp.joining_date)} />
           <GridCell label="Department" value={emp.department} />
           <GridCell label="Designation" value={emp.designation} />
+        </div>
+        <hr style={HAIRLINE_GRAY} />
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+            padding: '8px 0 6px',
+          }}
+        >
           <GridCell label="Payment Mode" value={emp.payment_mode} />
           <GridCell label="UAN" value={emp.uan} />
           <GridCell label="PF Number" value={emp.pf_number} />
           <GridCell label="PAN Number" value={emp.pan_number} />
         </div>
+        <hr style={HAIRLINE_BLACK} />
 
-        <hr style={hrLine} />
-
-        <SectionTitle>Salary Details</SectionTitle>
+        <div style={{ fontSize: 13, fontWeight: 400, padding: '14px 0 10px' }}>SALARY DETAILS</div>
+        <hr style={HAIRLINE_BLACK} />
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-            gap: '8px 12px',
-            marginBottom: 4,
+            gridTemplateColumns: '1.25fr 1.2fr 1.1fr 0.9fr 1fr',
+            padding: '8px 0 6px',
           }}
         >
-          <GridCell label="Actual Payable Days" value={fmtDays(c.effectivePaidDays)} />
-          <GridCell label="Days in Month" value={fmtDays(c.totalWorkingDays)} />
-          <GridCell label="Loss Of Pay Days" value={fmtDays(c.lopDays)} />
-          <GridCell label="Days Payable" value={String(c.daysPayable)} />
+          <GridCell label="Actual Payable Days" value={fmtDays1(c.effectivePaidDays)} />
+          <GridCell label="Total Working Days" value={fmtDays1(c.totalWorkingDays)} />
+          <GridCell label="Loss Of Pay Days" value={fmtDays2(c.lopDays)} />
+          <GridCell
+            label="Days Payable"
+            value={Number.isInteger(c.daysPayable) ? String(c.daysPayable) : fmtDays1(c.daysPayable)}
+          />
+          <GridCell label="Overtime Hours" value="0.0" />
         </div>
+        <hr style={HAIRLINE_GRAY} />
 
-        <hr style={hrLine} />
-
-        <div style={{ display: 'flex', gap: 24 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <SectionTitle>Earnings</SectionTitle>
+        <div style={{ display: 'flex', marginTop: 16, marginBottom: 16 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>EARNINGS</div>
             {earnings.map((e) => (
               <LineRow key={e.label} label={e.label} amount={e.amount} />
             ))}
-            <LineRow label="Total Earnings" amount={c.totalEarningsA} bold />
+            <LineRow label="Total Earnings" amount={c.totalEarningsA} boldLabel />
           </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <SectionTitle>PF Deductions</SectionTitle>
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              paddingLeft: 16,
+              borderLeft: '0.75px solid #d3d3d3',
+            }}
+          >
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>PF Deductions</div>
             <LineRow label="PF Employee" amount={c.pfEmployee} />
-            <LineRow label="Total PF Deductions" amount={c.totalPfDeductionsB} bold />
+            <LineRow label="Total PF Deductions" amount={c.totalPfDeductionsB} boldLabel />
 
-            <SectionTitle>Taxes &amp; other Deductions</SectionTitle>
+            <div style={{ fontSize: 13, fontWeight: 700, marginTop: 14, marginBottom: 10 }}>
+              Taxes &amp; other Deductions
+            </div>
             <LineRow label="Professional Tax" amount={c.professionalTax} />
             {customDeductions
               .filter((d) => d.label)
               .map((d, i) => (
                 <LineRow key={i} label={d.label} amount={Number(d.amount) || 0} />
               ))}
-            <LineRow label="Total Taxes &amp; Other Deductions" amount={c.totalTaxesDeductionsC} bold />
-
-            {c.reimbursements.length > 0 ? (
-              <>
-                <SectionTitle>Reimbursements</SectionTitle>
-                {c.reimbursements.map((r, i) => (
-                  <LineRow key={i} label={r.label} amount={r.amount} />
-                ))}
-                <LineRow label="Total Reimbursements" amount={c.totalReimbursementsD} bold />
-              </>
-            ) : null}
+            <LineRow
+              label="Total Taxes &amp; Other Deductions"
+              amount={c.totalTaxesDeductionsC}
+              boldLabel
+            />
           </div>
         </div>
 
-        <hr style={hrLine} />
+        <SummaryBand
+          label="Total"
+          amount={c.netPay}
+          wordsLabel="Total in words"
+          words={netWords}
+        />
 
-        <div
-          style={{
-            backgroundColor: '#f3f4f6',
-            padding: '10px 14px',
-            marginBottom: 10,
-          }}
-        >
-          <LineRow label="Net Salary Payable" amount={c.netPay} bold />
-          <div style={{ fontSize: 11, fontWeight: 700, marginTop: 6, lineHeight: 1.4 }}>
-            Net Salary in words: {netWords}
+        {c.reimbursements.length > 0 ? (
+          <div style={{ marginTop: 16, maxWidth: '50%' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>Reimbursements</div>
+            {c.reimbursements.map((r, i) => (
+              <LineRow key={i} label={r.label} amount={r.amount} />
+            ))}
+            <LineRow label="Total Reimbursements" amount={c.totalReimbursementsD} boldLabel />
           </div>
-        </div>
+        ) : null}
 
-        <div style={{ marginTop: 16, fontSize: 10, fontStyle: 'italic' }}>
-          <strong>Note :</strong> All amounts displayed in this payslip are in <strong>INR</strong>
+        <div style={{ marginTop: 14, fontSize: 13, lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 700 }}>**Note : </span>
+          <span style={{ fontStyle: 'italic' }}>
+            All amounts displayed in this payslip are in INR
+          </span>
         </div>
-
-        <div
-          style={{
-            marginTop: 20,
-            fontSize: 10,
-            color: '#6b7280',
-            fontStyle: 'italic',
-            textAlign: 'center',
-          }}
-        >
-          This is a system generated payslip and doesn&apos;t need a signature
-        </div>
+        <hr style={{ ...HAIRLINE_BLACK, marginTop: 22 }} />
       </div>
 
       <LeaveDetailsPage rows={leaveDetails} fontFamily={fontFamily} />

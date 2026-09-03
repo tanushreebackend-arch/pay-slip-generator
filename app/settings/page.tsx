@@ -195,7 +195,7 @@ export default function SettingsPage() {
       formData.append('file', file)
       formData.append('prefix', prefix)
       const res = await fetch('/api/settings/upload', { method: 'POST', body: formData })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Upload failed')
       return data.url
     } catch (err: unknown) {
@@ -209,28 +209,18 @@ export default function SettingsPage() {
   const handleLogoFile = async (file: File) => {
     const url = await uploadAsset(file, 'logo', setUploadingLogo)
     if (url) {
-      const next = { ...form, logo_url: url }
-      setForm(next)
-      try {
-        await persistSettings(next)
-        toast.success('Logo uploaded and saved')
-      } catch (err: unknown) {
-        toast.error(getErrorMessage(err, 'Logo uploaded but could not be saved'))
-      }
+      setForm((prev) => ({ ...prev, logo_url: url }))
+      await refetch()
+      toast.success('Logo uploaded and saved')
     }
   }
 
   const handleSignatureFile = async (file: File) => {
     const url = await uploadAsset(file, 'signature', setUploadingSignature)
     if (url) {
-      const next = { ...form, signature_url: url }
-      setForm(next)
-      try {
-        await persistSettings(next)
-        toast.success('Signature uploaded and saved')
-      } catch (err: unknown) {
-        toast.error(getErrorMessage(err, 'Signature uploaded but could not be saved'))
-      }
+      setForm((prev) => ({ ...prev, signature_url: url }))
+      await refetch()
+      toast.success('Signature uploaded and saved')
     }
   }
 
