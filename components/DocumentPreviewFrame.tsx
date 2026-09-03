@@ -3,7 +3,6 @@
 interface DocumentPreviewFrameProps {
   children: React.ReactNode
   pages?: number
-  /** When true, preview height follows document content instead of a fixed A4 slot */
   fitContent?: boolean
 }
 
