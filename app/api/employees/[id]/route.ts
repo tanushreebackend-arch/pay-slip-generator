@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth'
 import { mapEmployee } from '@/lib/mappers'
 import { hashPassword } from '@/lib/password'
 import { calculateMonthlyLeaveSummary } from '@/lib/leavePolicy'
+import { resolveMonthlyGross } from '@/lib/salaryInput'
 
 type RouteContext = { params: { id: string } }
 
@@ -106,6 +107,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
     pan_number,
     pf_number,
     uan,
+    annual_ctc,
     gross_salary,
     pf_amount,
     payment_mode,
@@ -120,9 +122,9 @@ export async function PUT(request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
   }
 
-  const gross = parseFloat(String(gross_salary))
-  if (Number.isNaN(gross) || gross < 0) {
-    return NextResponse.json({ error: 'Valid gross salary is required' }, { status: 400 })
+  const gross = resolveMonthlyGross({ annual_ctc, gross_salary })
+  if (gross == null) {
+    return NextResponse.json({ error: 'Valid annual CTC is required' }, { status: 400 })
   }
 
   const loginEmail = email?.trim() ? String(email).trim().toLowerCase() : existing.email
@@ -178,6 +180,28 @@ export async function PUT(request: Request, { params }: RouteContext) {
     }
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const { error } = await requireAdmin()
+  if (error) return error
+
+  const existing = await prisma.employee.findUnique({ where: { id: params.id } })
+  if (!existing) {
+    return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+  }
+
+  const body = await request.json()
+  const gross = resolveMonthlyGross(body)
+  if (gross == null) {
+    return NextResponse.json({ error: 'Valid annual CTC is required' }, { status: 400 })
+  }
+
+  const employee = await prisma.employee.update({
+    where: { id: params.id },
+    data: { grossSalary: gross },
+  })
+  return NextResponse.json(mapEmployee(employee))
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {

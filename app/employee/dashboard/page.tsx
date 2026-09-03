@@ -1,45 +1,38 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import { useSession } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, getErrorMessage } from '@/lib/utils'
+import { getErrorMessage } from '@/lib/utils'
+import { LogIn, LogOut, Clock, Briefcase, Percent } from 'lucide-react'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  ATTENDANCE_STATUS_BADGE,
+  ATTENDANCE_STATUS_LABELS,
+  dateKey,
+  getAttendanceStatus,
+  getWorkedMs,
+  formatWorkedHours,
+  type AttendanceStatus,
+  type LeaveCover,
+} from '@/lib/attendanceRules'
 
 type PaySummary = {
-  monthName: string
-  year: number
-  grossSalary: number
-  estimatedNetPay: number
-  approvedLeaveDays: number
-  monthlyAllowanceDays: number
-  carryForwardDays: number
-  paidAllowanceDays: number
-  paidFullDays: number
-  paidHalfDays: number
-  excessLeaveDays: number
   paidLeaveRemaining: number
-  leaveDeduction: number
-  perDayRate: number
 }
 
-type LeaveRow = {
+type LeaveRow = LeaveCover & {
   id: string
   leave_type: string
-  from_date: string
-  to_date: string
-  days: number
-  status: string
 }
+
+type AttendanceDay = {
+  date: string
+  check_in: string
+  check_out: string | null
+}
+
+type Holiday = { id: string; name: string; date: string }
 
 type DashboardData = {
   pay_summary: PaySummary
@@ -49,28 +42,101 @@ type DashboardData = {
   } | null
   pending_leave_count: number
   recent_leaves: LeaveRow[]
+  all_leaves?: LeaveRow[]
+  month_attendance?: AttendanceDay[]
+  upcoming_holidays?: Holiday[]
+  holidays?: Holiday[]
 }
 
-const statusColor: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
+function formatTimeIST(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Kolkata',
+  })
 }
+
+function CircularProgress({ ms, maxMs }: { ms: number; maxMs: number }) {
+  const pct = Math.min(1, ms / maxMs)
+  const r = 70
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - pct)
+
+  return (
+    <svg width="180" height="180" viewBox="0 0 180 180">
+      <circle cx="90" cy="90" r={r} fill="none" stroke="#F0E6D6" strokeWidth="10" />
+      <circle
+        cx="90"
+        cy="90"
+        r={r}
+        fill="none"
+        stroke="#F5A623"
+        strokeWidth="10"
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform="rotate(-90 90 90)"
+        className="transition-all duration-500"
+      />
+      <text x="90" y="82" textAnchor="middle" fontSize="22" fontWeight="700">
+        {formatWorkedHours(ms === 0 ? 0 : ms)}
+      </text>
+      <text x="90" y="105" textAnchor="middle" className="fill-text-muted" fontSize="11">
+        Today&apos;s Work Time
+      </text>
+    </svg>
+  )
+}
+
+type DayStatus = AttendanceStatus | 'none'
+
+const calendarColors: Record<DayStatus, string> = {
+  PRESENT: 'bg-green-500 text-white',
+  LATE: 'bg-orange-500 text-white',
+  HALF_DAY: 'bg-pink-500 text-white',
+  ABSENT: 'bg-red-500 text-white',
+  ON_LEAVE: 'bg-blue-500 text-white',
+  WEEK_OFF: 'bg-indigo-400 text-white',
+  HOLIDAY: 'bg-yellow-400 text-white',
+  none: '',
+}
+
+const legendItems: { status: DayStatus; label: string }[] = [
+  { status: 'PRESENT', label: 'Present' },
+  { status: 'LATE', label: 'Late' },
+  { status: 'HALF_DAY', label: 'Half Day' },
+  { status: 'ABSENT', label: 'Absent' },
+  { status: 'ON_LEAVE', label: 'On Leave' },
+  { status: 'WEEK_OFF', label: 'Week Off' },
+  { status: 'HOLIDAY', label: 'Holiday' },
+]
 
 export default function EmployeeDashboardPage() {
   const { data: session } = useSession()
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [acting, setActing] = useState(false)
-
-  const today = new Date().toISOString().split('T')[0]
+  const [now, setNow] = useState(Date.now())
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/employee/dashboard')
-      if (!res.ok) throw new Error('Failed to load dashboard')
-      setData(await res.json())
+      const today = new Date()
+      const y = today.getFullYear()
+      const m = today.getMonth()
+      const from = `${y}-${String(m + 1).padStart(2, '0')}-01`
+      const lastDay = new Date(y, m + 1, 0).getDate()
+      const to = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+      const [dashRes, attRes] = await Promise.all([
+        fetch('/api/employee/dashboard'),
+        fetch(`/api/attendance?from=${from}&to=${to}`),
+      ])
+      if (!dashRes.ok) throw new Error('Failed to load dashboard')
+      const dashData = await dashRes.json()
+      const attData = attRes.ok ? await attRes.json() : []
+      setData({ ...dashData, month_attendance: attData })
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to load dashboard'))
     } finally {
@@ -82,6 +148,11 @@ export default function EmployeeDashboardPage() {
     load()
   }, [load])
 
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(t)
+  }, [])
+
   const handleAction = async (action: 'check-in' | 'check-out') => {
     setActing(true)
     try {
@@ -92,7 +163,7 @@ export default function EmployeeDashboardPage() {
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Action failed')
-      toast.success(action === 'check-in' ? 'Checked in' : 'Checked out')
+      toast.success(action === 'check-in' ? 'Checked in!' : 'Checked out!')
       load()
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Action failed'))
@@ -101,18 +172,91 @@ export default function EmployeeDashboardPage() {
     }
   }
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-
-  const pay = data?.pay_summary
   const todayRecord = data?.today_attendance
+  const workedMs = todayRecord
+    ? todayRecord.check_out
+      ? getWorkedMs(todayRecord.check_in, todayRecord.check_out)
+      : Math.max(0, Date.now() - new Date(todayRecord.check_in).getTime())
+    : 0
+  void now
+
+  const leaves = data?.all_leaves ?? data?.recent_leaves ?? []
+  const holidayDates = new Set((data?.holidays ?? []).map((h) => dateKey(h.date)))
+
+  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStatus = getAttendanceStatus({
+    date: todayStr,
+    checkIn: todayRecord?.check_in,
+    checkOut: todayRecord?.check_out,
+    holidayDates,
+    leaves,
+  })
+
+  const calendarData = useMemo(() => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    const daysInMonth = new Date(y, m + 1, 0).getDate()
+    const firstDow = new Date(y, m, 1).getDay()
+
+    const attMap = new Map<number, AttendanceDay>()
+    for (const a of data?.month_attendance ?? []) {
+      const d = Number(dateKey(a.date).slice(8, 10))
+      attMap.set(d, a)
+    }
+
+    const days: { day: number; status: DayStatus }[] = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const isFuture = d > today.getDate()
+      if (isFuture && !holidayDates.has(date) && new Date(date + 'T12:00:00').getDay() !== 0 && new Date(date + 'T12:00:00').getDay() !== 6) {
+        days.push({ day: d, status: 'none' })
+        continue
+      }
+      const att = attMap.get(d)
+      days.push({
+        day: d,
+        status: getAttendanceStatus({
+          date,
+          checkIn: att?.check_in,
+          checkOut: att?.check_out,
+          holidayDates,
+          leaves,
+        }),
+      })
+    }
+
+    return { firstDow, days }
+  }, [data, holidayDates, leaves])
+
+  const attendanceRate = useMemo(() => {
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = today.getMonth()
+    let scored = 0
+    let presentish = 0
+    for (const { day, status } of calendarData.days) {
+      if (day > today.getDate()) continue
+      if (status === 'HOLIDAY' || status === 'WEEK_OFF' || status === 'none') continue
+      scored += 1
+      if (status === 'PRESENT' || status === 'LATE') presentish += 1
+      if (status === 'HALF_DAY') presentish += 0.5
+    }
+    void y
+    void m
+    return scored > 0 ? Math.round((presentish / scored) * 100) : 0
+  }, [calendarData])
+
+  const upcoming = data?.upcoming_holidays ?? []
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-xl font-semibold text-text-primary">Dashboard</h1>
+        <h1 className="text-xl font-semibold text-text-primary">
+          Welcome back, <span className="text-accent">{session?.user?.name || 'User'}</span>
+        </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Welcome, {session?.user?.name || session?.user?.email}
+          Here is what&apos;s happening in your organization today.
         </p>
       </header>
 
@@ -120,205 +264,173 @@ export default function EmployeeDashboardPage() {
         <p className="text-sm text-text-muted">Loading...</p>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="rounded-xl border border-green-200 bg-green-50 p-5">
-              <p className="text-sm text-text-secondary">Paid Leave Remaining</p>
-              <p className="mt-1 text-2xl font-bold text-green-800">
-                {pay?.paidLeaveRemaining ?? 0} day{(pay?.paidLeaveRemaining ?? 0) !== 1 ? 's' : ''}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                {pay?.monthlyAllowanceDays ?? 0} this month
-                {(pay?.carryForwardDays ?? 0) > 0 && <> + {pay?.carryForwardDays}d carry</>}
-                {' − '}
-                {pay?.approvedLeaveDays ?? 0} used
-              </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                <Briefcase className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Leave Balance</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {data?.pay_summary.paidLeaveRemaining ?? 0} Days
+                </p>
+              </div>
             </div>
-            <div className="rounded-xl border border-border bg-background p-5">
-              <p className="text-sm text-text-secondary">Monthly Gross Pay</p>
-              <p className="mt-1 text-2xl font-bold text-text-primary">
-                {formatCurrency(pay?.grossSalary ?? 0)}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                {pay?.monthName} {pay?.year}
-              </p>
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                <Percent className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">My Attendance</p>
+                <p className="text-lg font-bold text-text-primary">{attendanceRate}%</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-border bg-background p-5">
-              <p className="text-sm text-text-secondary">Estimated Net Pay</p>
-              <p className="mt-1 text-2xl font-bold text-green-700">
-                {formatCurrency(pay?.estimatedNetPay ?? 0)}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">After leave deductions</p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+                <LogIn className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Check In</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {todayRecord?.check_in ? formatTimeIST(todayRecord.check_in) : '--:--'}
+                </p>
+                <p className="text-[10px] text-text-muted">IST · Office 9:00 AM</p>
+              </div>
             </div>
-            <div className="rounded-xl border border-border bg-background p-5">
-              <p className="text-sm text-text-secondary">Leave Taken (This Month)</p>
-              <p className="mt-1 text-2xl font-bold text-text-primary">
-                {pay?.approvedLeaveDays ?? 0} day{(pay?.approvedLeaveDays ?? 0) !== 1 ? 's' : ''}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                Paid allowance: {pay?.paidAllowanceDays ?? 0}d
-                {(pay?.carryForwardDays ?? 0) > 0 && (
-                  <> (incl. {pay?.carryForwardDays}d carry forward)</>
-                )}
-              </p>
+            <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+                <LogOut className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs text-text-muted">Check Out</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {todayRecord?.check_out ? formatTimeIST(todayRecord.check_out) : '--:--'}
+                </p>
+                <p className="text-[10px] text-text-muted">IST · Office 6:00 PM</p>
+              </div>
             </div>
-            <div
-              className={`rounded-xl border p-5 ${
-                (pay?.leaveDeduction ?? 0) > 0
-                  ? 'border-red-200 bg-red-50'
-                  : 'border-border bg-background'
-              }`}
-            >
-              <p className="text-sm text-text-secondary">Leave Deduction</p>
-              <p
-                className={`mt-1 text-2xl font-bold ${
-                  (pay?.leaveDeduction ?? 0) > 0 ? 'text-red-700' : 'text-text-primary'
-                }`}
-              >
-                {formatCurrency(pay?.leaveDeduction ?? 0)}
-              </p>
-              <p className="mt-1 text-xs text-text-muted">
-                {(pay?.excessLeaveDays ?? 0) > 0
-                  ? `${pay?.excessLeaveDays} excess day(s) × ${formatCurrency(pay?.perDayRate ?? 0)}/day`
-                  : 'Within paid leave limit'}
-              </p>
+            <div className="flex items-center justify-between rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                  <Clock className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-text-muted">Working Hours</p>
+                  <p className="text-lg font-bold text-text-primary">{formatWorkedHours(workedMs)}</p>
+                </div>
+              </div>
+              {!todayRecord ? (
+                <Button
+                  onClick={() => handleAction('check-in')}
+                  disabled={acting}
+                  className="bg-accent text-white hover:bg-accent-hover"
+                >
+                  Check In
+                </Button>
+              ) : !todayRecord.check_out ? (
+                <Button
+                  onClick={() => handleAction('check-out')}
+                  disabled={acting}
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  Check Out
+                </Button>
+              ) : null}
             </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-xl border border-border bg-background p-6">
-              <h2 className="text-base font-semibold">Today&apos;s Attendance</h2>
-              <p className="mt-1 text-sm text-text-muted">{today}</p>
-              <div className="mt-4 space-y-3">
-                <p className="text-sm">
-                  Check-in:{' '}
-                  <span className="font-medium">
-                    {todayRecord?.check_in ? formatTime(todayRecord.check_in) : '—'}
-                  </span>
-                </p>
-                <p className="text-sm">
-                  Check-out:{' '}
-                  <span className="font-medium">
-                    {todayRecord?.check_out ? formatTime(todayRecord.check_out) : '—'}
-                  </span>
-                </p>
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={() => handleAction('check-in')}
-                    disabled={acting || !!todayRecord}
-                  >
-                    Check In
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => handleAction('check-out')}
-                    disabled={acting || !todayRecord || !!todayRecord.check_out}
-                  >
-                    Check Out
-                  </Button>
+              <h2 className="mb-4 text-base font-semibold text-text-primary">My Attendance</h2>
+              <div className="flex items-center gap-8">
+                <CircularProgress ms={workedMs} maxMs={9 * 3600000} />
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between gap-8">
+                    <span className="text-text-secondary">Check In</span>
+                    <span className="font-medium">
+                      {todayRecord?.check_in ? formatTimeIST(todayRecord.check_in) : '--:--'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-8">
+                    <span className="text-text-secondary">Check Out</span>
+                    <span className="font-medium">
+                      {todayRecord?.check_out ? formatTimeIST(todayRecord.check_out) : '--:--'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-8">
+                    <span className="text-text-secondary">Working Hours</span>
+                    <span className="font-medium">{todayRecord ? formatWorkedHours(workedMs) : '--'}</span>
+                  </div>
+                  <div className="pt-2">
+                    <p className="text-xs font-medium text-text-muted">Status</p>
+                    <span
+                      className={`mt-1 inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${ATTENDANCE_STATUS_BADGE[todayStatus]}`}
+                    >
+                      {ATTENDANCE_STATUS_LABELS[todayStatus]}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl border border-border bg-background p-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-base font-semibold">Leave Policy</h2>
-                <Link
-                  href="/employee/leaves"
-                  className="text-sm font-medium text-accent hover:underline"
-                >
-                  Request leave →
-                </Link>
+              <h2 className="mb-4 text-base font-semibold text-text-primary">Attendance Report</h2>
+              <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                  <div key={i} className="py-1 font-medium text-text-muted">
+                    {d}
+                  </div>
+                ))}
+                {Array.from({ length: calendarData.firstDow }, (_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {calendarData.days.map(({ day, status }) => (
+                  <div
+                    key={day}
+                    className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium ${
+                      status === 'none' ? 'text-text-muted' : calendarColors[status]
+                    }`}
+                  >
+                    {day}
+                  </div>
+                ))}
               </div>
-              <div className="mt-4 space-y-2 text-sm">
-                <p>
-                  <span className="text-text-secondary">Paid leave per month:</span>{' '}
-                  <span className="font-medium">1 full day + 1 half day</span>
-                </p>
-                {(pay?.carryForwardDays ?? 0) > 0 && (
-                  <p>
-                    <span className="text-text-secondary">Carry forward from last month:</span>{' '}
-                    <span className="font-medium text-green-700">
-                      +{pay?.carryForwardDays} day(s)
-                    </span>
-                  </p>
-                )}
-                <p>
-                  <span className="text-text-secondary">Total paid allowance this month:</span>{' '}
-                  <span className="font-medium">{pay?.paidAllowanceDays ?? 0} days</span>
-                </p>
-                <p>
-                  <span className="text-text-secondary">Used this month:</span>{' '}
-                  <span className="font-medium">{pay?.approvedLeaveDays ?? 0} days (approved)</span>
-                </p>
-                <p>
-                  <span className="text-text-secondary">Paid leave remaining:</span>{' '}
-                  <span className="font-medium text-green-700">
-                    {pay?.paidLeaveRemaining ?? 0} day(s)
-                  </span>
-                </p>
-                <p>
-                  <span className="text-text-secondary">Pending requests:</span>{' '}
-                  <span className="font-medium">{data?.pending_leave_count ?? 0}</span>
-                </p>
-                {(pay?.excessLeaveDays ?? 0) > 0 && (
-                  <p className="rounded-lg bg-red-50 px-3 py-2 text-red-800">
-                    You have exceeded the paid leave limit by{' '}
-                    <strong>{pay?.excessLeaveDays} day(s)</strong>. A deduction of{' '}
-                    <strong>{formatCurrency(pay?.leaveDeduction ?? 0)}</strong> applies this month.
-                  </p>
-                )}
+              <div className="mt-4 flex flex-wrap gap-3 text-[11px]">
+                {legendItems.map(({ status, label }) => (
+                  <div key={status} className="flex items-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${calendarColors[status].split(' ')[0]}`} />
+                    {label}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-background">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <h2 className="text-base font-semibold">Recent Leave Requests</h2>
-              <Link
-                href="/employee/leaves"
-                className="text-sm font-medium text-accent hover:underline"
-              >
-                View all
-              </Link>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>From</TableHead>
-                  <TableHead>To</TableHead>
-                  <TableHead>Days</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(data?.recent_leaves ?? []).length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-text-muted">
-                      No leave requests yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  data?.recent_leaves.map((l) => (
-                    <TableRow key={l.id}>
-                      <TableCell>{l.leave_type}</TableCell>
-                      <TableCell>{l.from_date}</TableCell>
-                      <TableCell>{l.to_date}</TableCell>
-                      <TableCell>{l.days}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                            statusColor[l.status] ?? 'bg-gray-100 text-gray-800'
-                          }`}
-                        >
-                          {l.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <div className="rounded-xl border border-border bg-background p-6">
+            <h2 className="mb-4 text-base font-semibold text-text-primary">Holidays & Events</h2>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-text-muted">No upcoming holidays this year.</p>
+            ) : (
+              <ul className="space-y-2">
+                {upcoming.map((h) => {
+                  const d = new Date(h.date + 'T12:00:00')
+                  const month = d.toLocaleDateString('en-IN', { month: 'short' }).toUpperCase()
+                  return (
+                    <li key={h.id} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
+                      <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-blue-100 text-blue-700">
+                        <span className="text-[10px] font-semibold leading-none">{month}</span>
+                        <span className="text-lg font-bold leading-tight">{d.getDate()}</span>
+                      </div>
+                      <p className="text-sm font-medium text-text-primary">{h.name}</p>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
         </>
       )}

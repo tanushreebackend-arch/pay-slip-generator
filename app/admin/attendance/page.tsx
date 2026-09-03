@@ -22,14 +22,30 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  ATTENDANCE_FILTER_OPTIONS,
+  ATTENDANCE_STATUS_BADGE,
+  ATTENDANCE_STATUS_LABELS,
+  dateKey,
+  formatWorkedHours,
+  getAttendanceStatus,
+  getWorkedMs,
+  type LeaveCover,
+} from '@/lib/attendanceRules'
 
 type AttendanceRecord = {
   id: string
   date: string
   check_in: string
   check_out: string | null
+  notes: string | null
   employee: { id?: string; name: string; employee_id: string }
 }
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
 function toTimeInput(iso: string | null): string {
   if (!iso) return ''
@@ -43,15 +59,24 @@ function combineDateTime(date: string, time: string): string {
   return new Date(`${date}T${time}:00`).toISOString()
 }
 
+type LeaveWithEmployee = LeaveCover & { employee?: { id: string } }
+
 export default function AdminAttendancePage() {
+  const now = new Date()
   const [records, setRecords] = useState<AttendanceRecord[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [filterYear, setFilterYear] = useState(now.getFullYear())
+  const [filterMonth, setFilterMonth] = useState(now.getMonth())
+  const [filterEmployee, setFilterEmployee] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('All Statuses')
+  const [holidays, setHolidays] = useState<{ date: string }[]>([])
+  const [leaves, setLeaves] = useState<LeaveWithEmployee[]>([])
   const [form, setForm] = useState({
     employee_id: '',
-    date: new Date().toISOString().split('T')[0],
+    date: now.toISOString().split('T')[0],
     check_in: '09:30',
     check_out: '18:30',
   })
@@ -59,24 +84,31 @@ export default function AdminAttendancePage() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [attRes, empRes] = await Promise.all([
-        fetch('/api/attendance'),
+      const from = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-01`
+      const lastDay = new Date(filterYear, filterMonth + 1, 0).getDate()
+      const to = `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      const empParam = filterEmployee !== 'all' ? `&employee_id=${filterEmployee}` : ''
+
+      const [attRes, empRes, holRes, leaveRes] = await Promise.all([
+        fetch(`/api/attendance?from=${from}&to=${to}${empParam}`),
         fetch('/api/employees'),
+        fetch(`/api/holidays?year=${filterYear}`),
+        fetch('/api/leaves'),
       ])
       if (!attRes.ok) throw new Error('Failed to load attendance')
       if (!empRes.ok) throw new Error('Failed to load employees')
       setRecords(await attRes.json())
       setEmployees(await empRes.json())
+      if (holRes.ok) setHolidays(await holRes.json())
+      if (leaveRes.ok) setLeaves(await leaveRes.json())
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to load attendance'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [filterYear, filterMonth, filterEmployee])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
   const formatTime = (iso: string | null) =>
     iso ? new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '—'
@@ -85,7 +117,7 @@ export default function AdminAttendancePage() {
     setEditingId(null)
     setForm({
       employee_id: '',
-      date: new Date().toISOString().split('T')[0],
+      date: now.toISOString().split('T')[0],
       check_in: '09:30',
       check_out: '18:30',
     })
@@ -158,16 +190,31 @@ export default function AdminAttendancePage() {
     }
   }
 
+  const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - i)
+  const holidayDates = new Set(holidays.map((h) => dateKey(h.date)))
+  const rowStatus = (r: AttendanceRecord) =>
+    getAttendanceStatus({
+      date: dateKey(r.date),
+      checkIn: r.check_in,
+      checkOut: r.check_out,
+      holidayDates,
+      leaves: leaves.filter((l) => !r.employee.id || l.employee?.id === r.employee.id),
+    })
+  const visibleRecords =
+    statusFilter === 'All Statuses'
+      ? records
+      : records.filter((r) => rowStatus(r) === statusFilter)
+
   return (
     <div>
       <header className="mb-6">
         <h1 className="text-xl font-semibold text-text-primary">Attendance Overview</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Add or edit a day’s attendance. Employees can also check in from their portal. This does
-          not change payslip LOP.
+          View and manage employee attendance records. Filter by month, year, or employee.
         </p>
       </header>
 
+      {/* Add/Edit form */}
       <form
         onSubmit={handleSubmit}
         className="mb-6 grid gap-4 rounded-xl border border-border bg-background p-4 sm:grid-cols-2 lg:grid-cols-5"
@@ -228,6 +275,47 @@ export default function AdminAttendancePage() {
         </div>
       </form>
 
+      {/* Filters */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-text-secondary">Filter:</span>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        >
+          <option>All Statuses</option>
+          {ATTENDANCE_FILTER_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {ATTENDANCE_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterEmployee}
+          onChange={e => setFilterEmployee(e.target.value)}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        >
+          <option value="all">All Employees</option>
+          {employees.map(emp => (
+            <option key={emp.id} value={emp.id}>{emp.name}</option>
+          ))}
+        </select>
+        <select
+          value={filterYear}
+          onChange={e => setFilterYear(Number(e.target.value))}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        >
+          {years.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <select
+          value={filterMonth}
+          onChange={e => setFilterMonth(Number(e.target.value))}
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+        >
+          {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+        </select>
+      </div>
+
       <div className="rounded-xl border border-border bg-background">
         <Table>
           <TableHeader>
@@ -237,30 +325,38 @@ export default function AdminAttendancePage() {
               <TableHead>Date</TableHead>
               <TableHead>Check In</TableHead>
               <TableHead>Check Out</TableHead>
+              <TableHead>Worked Hours</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-text-muted">
+                <TableCell colSpan={8} className="text-center text-text-muted">
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : records.length === 0 ? (
+            ) : visibleRecords.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-text-muted">
-                  No attendance records yet
+                <TableCell colSpan={8} className="text-center text-text-muted">
+                  No attendance records for this period
                 </TableCell>
               </TableRow>
             ) : (
-              records.map((r) => (
+              visibleRecords.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell>{r.employee.name}</TableCell>
-                  <TableCell>{r.employee.employee_id}</TableCell>
+                  <TableCell className="font-medium">{r.employee.name}</TableCell>
+                  <TableCell className="text-text-muted">{r.employee.employee_id}</TableCell>
                   <TableCell>{r.date}</TableCell>
-                  <TableCell>{formatTime(r.check_in)}</TableCell>
-                  <TableCell>{formatTime(r.check_out)}</TableCell>
+                  <TableCell className="text-green-600">{formatTime(r.check_in)}</TableCell>
+                  <TableCell className="text-red-600">{formatTime(r.check_out)}</TableCell>
+                  <TableCell>{formatWorkedHours(getWorkedMs(r.check_in, r.check_out))}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${ATTENDANCE_STATUS_BADGE[rowStatus(r)]}`}>
+                      {ATTENDANCE_STATUS_LABELS[rowStatus(r)]}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button type="button" variant="ghost" size="sm" onClick={() => startEdit(r)}>
                       Edit

@@ -38,7 +38,10 @@ export async function GET() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const [employee, leaves, todayAttendance] = await Promise.all([
+  const yearStart = new Date(today.getFullYear(), 0, 1)
+  const yearEnd = new Date(today.getFullYear(), 11, 31, 23, 59, 59)
+
+  const [employee, leaves, todayAttendance, holidays] = await Promise.all([
     prisma.employee.findUnique({ where: { id: employeeId } }),
     prisma.leaveRequest.findMany({
       where: { employeeId },
@@ -46,6 +49,10 @@ export async function GET() {
     }),
     prisma.attendanceRecord.findUnique({
       where: { employeeId_date: { employeeId, date: today } },
+    }),
+    prisma.publicHoliday.findMany({
+      where: { date: { gte: yearStart, lte: yearEnd } },
+      orderBy: { date: 'asc' },
     }),
   ])
 
@@ -86,5 +93,17 @@ export async function GET() {
     pending_leave_count: pendingLeaves.length,
     recent_leaves: recentLeaves,
     all_leaves: leaves.map(formatLeave),
+    upcoming_holidays: holidays
+      .filter((h) => h.date >= today)
+      .map((h) => ({
+        id: h.id,
+        name: h.name,
+        date: h.date.toISOString().split('T')[0],
+      })),
+    holidays: holidays.map((h) => ({
+      id: h.id,
+      name: h.name,
+      date: h.date.toISOString().split('T')[0],
+    })),
   })
 }

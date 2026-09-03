@@ -55,6 +55,8 @@ export const config = {
     '/settings/:path*',
     '/admin/:path*',
     '/employee/:path*',
+    '/employee/finance/:path*',
+    '/employee/documents/:path*',
     '/login',
   ],
 }

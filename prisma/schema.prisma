@@ -106,3 +106,13 @@ model Settings {
 
   @@map("settings")
 }
+
+model PublicHoliday {
+  id        String   @id @default(uuid())
+  name      String
+  date      DateTime @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date])
+  @@map("public_holidays")
+}

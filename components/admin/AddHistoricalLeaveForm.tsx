@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { Employee } from '@/types'
 
-const LEAVE_TYPES = ['Sick Leave', 'Earned Leave', 'Casual Leave', 'Optional Holiday', 'Unpaid Leave']
+const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Comp-Off']
 
 type Props = {
   employees?: Employee[]

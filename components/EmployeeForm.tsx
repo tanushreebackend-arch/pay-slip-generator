@@ -34,7 +34,7 @@ const emptyForm = {
   pan_number: '',
   pf_number: '',
   uan: '',
-  gross_salary: '',
+  annual_ctc: '',
   pf_amount: '',
   payment_mode: 'Bank Transfer',
   password: '',
@@ -70,7 +70,7 @@ export default function EmployeeForm({
         pan_number: employee.pan_number || '',
         pf_number: employee.pf_number || '',
         uan: employee.uan || '',
-        gross_salary: String(employee.gross_salary ?? ''),
+        annual_ctc: employee.gross_salary ? String(Math.round(employee.gross_salary * 12)) : '',
         pf_amount: employee.pf_amount != null ? String(employee.pf_amount) : '',
         payment_mode: employee.payment_mode || 'Bank Transfer',
         password: '',
@@ -91,16 +91,16 @@ export default function EmployeeForm({
       return
     }
     if (!form.email.trim()) {
-      toast.error('Email is required for employee login')
+      toast.error('Office email is required for employee login')
       return
     }
     if (!employee && (!form.password || form.password.length < 6)) {
-      toast.error('Initial password must be at least 6 characters')
+      toast.error('Login password must be at least 6 characters')
       return
     }
-    const gross = parseFloat(form.gross_salary)
-    if (Number.isNaN(gross) || gross < 0) {
-      toast.error('Valid gross salary is required')
+    const annualCtc = parseFloat(form.annual_ctc)
+    if (Number.isNaN(annualCtc) || annualCtc < 0) {
+      toast.error('Valid annual CTC is required')
       return
     }
 
@@ -119,7 +119,7 @@ export default function EmployeeForm({
         pan_number: form.pan_number || null,
         pf_number: form.pf_number || null,
         uan: form.uan || null,
-        gross_salary: gross,
+        annual_ctc: annualCtc,
         pf_amount: form.pf_amount === '' ? null : parseFloat(form.pf_amount),
         payment_mode: form.payment_mode,
         ...(form.password ? { password: form.password } : {}),
@@ -187,7 +187,7 @@ export default function EmployeeForm({
             />
           </div>
           <div className="space-y-2">
-            <Label>Login Email *</Label>
+            <Label>Office Email *</Label>
             <Input
               type="email"
               value={form.email}
@@ -222,15 +222,22 @@ export default function EmployeeForm({
             <Input value={form.uan} onChange={(e) => update('uan', e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Gross Salary *</Label>
+            <Label>Annual CTC *</Label>
             <Input
               type="number"
               step="0.01"
               min="0"
-              value={form.gross_salary}
-              onChange={(e) => update('gross_salary', e.target.value)}
+              value={form.annual_ctc}
+              onChange={(e) => update('annual_ctc', e.target.value)}
+              placeholder="e.g. 360000"
               required
             />
+            <p className="text-xs text-text-muted">
+              Monthly salary:{' '}
+              {form.annual_ctc && !Number.isNaN(parseFloat(form.annual_ctc))
+                ? `₹${(parseFloat(form.annual_ctc) / 12).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+                : '—'}
+            </p>
           </div>
           <div className="space-y-2">
             <Label>PF Amount (monthly)</Label>
@@ -259,12 +266,12 @@ export default function EmployeeForm({
             </Select>
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label>{employee ? 'Reset Password (optional)' : 'Initial Password *'}</Label>
+            <Label>{employee ? 'Reset Login Password (optional)' : 'Login Password (set by admin) *'}</Label>
             <Input
               type="password"
               value={form.password}
               onChange={(e) => update('password', e.target.value)}
-              placeholder={employee ? 'Leave blank to keep current password' : 'Min 6 characters'}
+              placeholder={employee ? 'Leave blank to keep current password' : 'Share this password with the employee'}
               required={!employee}
               minLength={employee ? undefined : 6}
             />

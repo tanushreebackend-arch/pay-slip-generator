@@ -30,8 +30,8 @@ const lora = Lora({
 })
 
 export const metadata: Metadata = {
-  title: 'PayGen — Payslip & Letter Generator',
-  description: 'Generate payslips and HR letters',
+  title: 'PurpleMerit — HRMS Portal',
+  description: 'Employee management, attendance, leave & payroll',
 }
 
 export default function RootLayout({

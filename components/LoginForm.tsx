@@ -75,12 +75,12 @@ export default function LoginForm() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: '#f8fafc' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: '#FFF8F0' }}>
       <Box
         sx={{
           display: { xs: 'none', md: 'flex' },
           flex: 1,
-          background: 'linear-gradient(135deg, #111827 0%, #1f2937 50%, #EB3514 100%)',
+          background: 'linear-gradient(135deg, #1A1A2E 0%, #4A1D8E 50%, #7B2FF7 100%)',
           color: '#fff',
           flexDirection: 'column',
           justifyContent: 'center',
@@ -103,11 +103,11 @@ export default function LoginForm() {
             <DescriptionOutlinedIcon sx={{ fontSize: 28 }} />
           </Box>
           <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.02em' }}>
-            PayGen
+            <span style={{ color: '#B388FF' }}>Purple</span>Merit
           </Typography>
         </Box>
         <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, maxWidth: 420, lineHeight: 1.2 }}>
-          Payroll & HR, simplified.
+          HRMS Portal
         </Typography>
         <Typography variant="body1" sx={{ opacity: 0.85, maxWidth: 400, lineHeight: 1.7 }}>
           Manage employees, attendance, leave requests, and generate payslips — all in one place.
@@ -132,9 +132,9 @@ export default function LoginForm() {
       >
         <Box sx={{ width: '100%', maxWidth: 400 }}>
           <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1, mb: 4 }}>
-            <DescriptionOutlinedIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+            <DescriptionOutlinedIcon sx={{ color: '#7B2FF7', fontSize: 32 }} />
             <Typography variant="h5" sx={{ fontWeight: 800 }}>
-              PayGen
+              <span style={{ color: '#7B2FF7' }}>Purple</span>Merit
             </Typography>
           </Box>
 

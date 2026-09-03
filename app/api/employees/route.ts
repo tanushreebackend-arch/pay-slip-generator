@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/api-auth'
 import { mapEmployee } from '@/lib/mappers'
 import { hashPassword } from '@/lib/password'
 import { calculateMonthlyLeaveSummary, type LeaveRecordInput } from '@/lib/leavePolicy'
+import { resolveMonthlyGross } from '@/lib/salaryInput'
 
 export async function GET() {
   const { error } = await requireAdmin()
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
     pan_number,
     pf_number,
     uan,
+    annual_ctc,
     gross_salary,
     pf_amount,
     payment_mode,
@@ -72,9 +74,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Email is required for employee login' }, { status: 400 })
   }
 
-  const gross = parseFloat(String(gross_salary))
-  if (Number.isNaN(gross) || gross < 0) {
-    return NextResponse.json({ error: 'Valid gross salary is required' }, { status: 400 })
+  const gross = resolveMonthlyGross({ annual_ctc, gross_salary })
+  if (gross == null) {
+    return NextResponse.json({ error: 'Valid annual CTC is required' }, { status: 400 })
   }
 
   const loginEmail = String(email).trim().toLowerCase()

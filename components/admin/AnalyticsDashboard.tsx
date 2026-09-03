@@ -23,6 +23,7 @@ import { BarChart } from '@mui/x-charts/BarChart'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { PieChart } from '@mui/x-charts/PieChart'
 import MuiProvider from '@/components/MuiProvider'
+import PublicHolidaysManager from '@/components/admin/PublicHolidaysManager'
 
 type Analytics = {
   kpis: {
@@ -200,6 +201,10 @@ function DashboardContent() {
           icon={<PaymentsIcon />}
           color="#EB3514"
         />
+      </Box>
+
+      <Box sx={{ mb: 3 }}>
+        <PublicHolidaysManager />
       </Box>
 
       <Box
