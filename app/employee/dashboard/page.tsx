@@ -16,6 +16,7 @@ import {
   type AttendanceStatus,
   type LeaveCover,
 } from '@/lib/attendanceRules'
+import { todayISTString } from '@/lib/istDate'
 
 type PaySummary = {
   paidLeaveRemaining: number
@@ -133,7 +134,10 @@ export default function EmployeeDashboardPage() {
         fetch('/api/employee/dashboard'),
         fetch(`/api/attendance?from=${from}&to=${to}`),
       ])
-      if (!dashRes.ok) throw new Error('Failed to load dashboard')
+      if (!dashRes.ok) {
+        const errBody = await dashRes.json().catch(() => ({}))
+        throw new Error(errBody.error || 'Failed to load dashboard')
+      }
       const dashData = await dashRes.json()
       const attData = attRes.ok ? await attRes.json() : []
       setData({ ...dashData, month_attendance: attData })
@@ -163,8 +167,22 @@ export default function EmployeeDashboardPage() {
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result.error || 'Action failed')
+      // Update UI immediately from response, then refresh full dashboard
+      if (result.check_in) {
+        setData((prev) =>
+          prev
+            ? {
+                ...prev,
+                today_attendance: {
+                  check_in: result.check_in,
+                  check_out: result.check_out ?? null,
+                },
+              }
+            : prev
+        )
+      }
       toast.success(action === 'check-in' ? 'Checked in!' : 'Checked out!')
-      load()
+      await load()
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Action failed'))
     } finally {
@@ -181,9 +199,12 @@ export default function EmployeeDashboardPage() {
   void now
 
   const leaves = data?.all_leaves ?? data?.recent_leaves ?? []
-  const holidayDates = new Set((data?.holidays ?? []).map((h) => dateKey(h.date)))
+  const holidayDates = useMemo(
+    () => new Set((data?.holidays ?? []).map((h) => dateKey(h.date))),
+    [data?.holidays]
+  )
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = todayISTString()
   const todayStatus = getAttendanceStatus({
     date: todayStr,
     checkIn: todayRecord?.check_in,
@@ -198,6 +219,9 @@ export default function EmployeeDashboardPage() {
     const m = today.getMonth()
     const daysInMonth = new Date(y, m + 1, 0).getDate()
     const firstDow = new Date(y, m, 1).getDay()
+    const todayDay = Number(todayISTString().slice(8, 10))
+    const todayMonth = Number(todayISTString().slice(5, 7)) - 1
+    const todayYear = Number(todayISTString().slice(0, 4))
 
     const attMap = new Map<number, AttendanceDay>()
     for (const a of data?.month_attendance ?? []) {
@@ -208,8 +232,10 @@ export default function EmployeeDashboardPage() {
     const days: { day: number; status: DayStatus }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
       const date = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      const isFuture = d > today.getDate()
-      if (isFuture && !holidayDates.has(date) && new Date(date + 'T12:00:00').getDay() !== 0 && new Date(date + 'T12:00:00').getDay() !== 6) {
+      const isFuture =
+        y > todayYear || (y === todayYear && m > todayMonth) || (y === todayYear && m === todayMonth && d > todayDay)
+      const dow = new Date(date + 'T12:00:00').getDay()
+      if (isFuture && !holidayDates.has(date) && dow !== 0 && dow !== 6) {
         days.push({ day: d, status: 'none' })
         continue
       }
@@ -227,7 +253,7 @@ export default function EmployeeDashboardPage() {
     }
 
     return { firstDow, days }
-  }, [data, holidayDates, leaves])
+  }, [data?.month_attendance, holidayDates, leaves])
 
   const attendanceRate = useMemo(() => {
     const today = new Date()

@@ -2,12 +2,7 @@ import { NextResponse } from 'next/server'
 import { UserRole } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/api-auth'
-
-function startOfToday(): Date {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d
-}
+import { calendarDateUTC, formatCalendarDate, istDateParts, todayCalendarDateUTC, todayISTString } from '@/lib/istDate'
 
 function formatRecord(row: {
   id: string
@@ -19,7 +14,7 @@ function formatRecord(row: {
 }) {
   return {
     id: row.id,
-    date: row.date.toISOString().split('T')[0],
+    date: formatCalendarDate(row.date),
     check_in: row.checkIn.toISOString(),
     check_out: row.checkOut?.toISOString() ?? null,
     notes: row.notes,
@@ -29,6 +24,27 @@ function formatRecord(row: {
       employee_id: row.employee.employeeId,
     },
   }
+}
+
+async function findTodayAttendance(employeeId: string) {
+  const todayStr = todayISTString()
+  const today = todayCalendarDateUTC()
+
+  const direct = await prisma.attendanceRecord.findUnique({
+    where: { employeeId_date: { employeeId, date: today } },
+    include: { employee: true },
+  })
+  if (direct) return direct
+
+  const { year, month, day } = istDateParts()
+  const prevUtc = new Date(Date.UTC(year, month - 1, day - 1, 12, 0, 0))
+  const prev = await prisma.attendanceRecord.findUnique({
+    where: { employeeId_date: { employeeId, date: prevUtc } },
+    include: { employee: true },
+  })
+  if (prev && todayISTString(prev.checkIn) === todayStr) return prev
+
+  return null
 }
 
 export async function GET(request: Request) {
@@ -51,8 +67,8 @@ export async function GET(request: Request) {
   }
 
   const dateFilter: { gte?: Date; lte?: Date } = {}
-  if (from) dateFilter.gte = new Date(from + 'T00:00:00')
-  if (to) dateFilter.lte = new Date(to + 'T23:59:59')
+  if (from) dateFilter.gte = calendarDateUTC(from)
+  if (to) dateFilter.lte = calendarDateUTC(to)
 
   const rows = await prisma.attendanceRecord.findMany({
     where: {
@@ -88,7 +104,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
     }
 
-    const date = new Date(dateStr + 'T00:00:00')
+    const date = calendarDateUTC(dateStr)
     const checkIn = new Date(checkInRaw)
     const checkOut = body.check_out ? new Date(String(body.check_out)) : null
     if (Number.isNaN(checkIn.getTime()) || (checkOut && Number.isNaN(checkOut.getTime()))) {
@@ -110,35 +126,40 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only employees can check in/out' }, { status: 403 })
   }
 
+  // Employees may clock in/out at any hour (including late evening).
   const employeeId = session!.user.employeeId
-  const today = startOfToday()
+  const today = todayCalendarDateUTC()
   const now = new Date()
 
   if (action === 'check-in') {
-    const existing = await prisma.attendanceRecord.findUnique({
-      where: { employeeId_date: { employeeId, date: today } },
-    })
+    const existing = await findTodayAttendance(employeeId)
+    // Idempotent: if already checked in, return the record so the UI can sync
     if (existing) {
-      return NextResponse.json({ error: 'Already checked in today' }, { status: 409 })
+      return NextResponse.json(formatRecord(existing))
     }
 
-    const row = await prisma.attendanceRecord.create({
-      data: { employeeId, date: today, checkIn: now },
-      include: { employee: true },
-    })
-    return NextResponse.json(formatRecord(row), { status: 201 })
+    try {
+      const row = await prisma.attendanceRecord.create({
+        data: { employeeId, date: today, checkIn: now },
+        include: { employee: true },
+      })
+      return NextResponse.json(formatRecord(row), { status: 201 })
+    } catch (err: unknown) {
+      // Race / unique conflict: return existing row instead of erroring
+      const again = await findTodayAttendance(employeeId)
+      if (again) return NextResponse.json(formatRecord(again))
+      const message = err instanceof Error ? err.message : 'Check-in failed'
+      return NextResponse.json({ error: message }, { status: 500 })
+    }
   }
 
   if (action === 'check-out') {
-    const existing = await prisma.attendanceRecord.findUnique({
-      where: { employeeId_date: { employeeId, date: today } },
-      include: { employee: true },
-    })
+    const existing = await findTodayAttendance(employeeId)
     if (!existing) {
       return NextResponse.json({ error: 'Check in first before checking out' }, { status: 400 })
     }
     if (existing.checkOut) {
-      return NextResponse.json({ error: 'Already checked out today' }, { status: 409 })
+      return NextResponse.json(formatRecord(existing))
     }
 
     const row = await prisma.attendanceRecord.update({

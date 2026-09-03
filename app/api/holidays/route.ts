@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireAuth, requireAdmin } from '@/lib/api-auth'
+import { calendarDateUTC, formatCalendarDate } from '@/lib/istDate'
 
 function formatHoliday(row: { id: string; name: string; date: Date }) {
   return {
     id: row.id,
     name: row.name,
-    date: row.date.toISOString().split('T')[0],
+    date: formatCalendarDate(row.date),
   }
 }
 
@@ -21,8 +22,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Invalid year' }, { status: 400 })
   }
 
-  const from = new Date(`${year}-01-01T00:00:00`)
-  const to = new Date(`${year}-12-31T23:59:59`)
+  const from = calendarDateUTC(`${year}-01-01`)
+  const to = calendarDateUTC(`${year}-12-31`)
+
+  if (typeof prisma.publicHoliday?.findMany !== 'function') {
+    return NextResponse.json([])
+  }
 
   const rows = await prisma.publicHoliday.findMany({
     where: { date: { gte: from, lte: to } },
@@ -43,9 +48,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Name and date are required' }, { status: 400 })
   }
 
-  const date = new Date(dateStr + 'T12:00:00')
+  const date = calendarDateUTC(dateStr)
   if (Number.isNaN(date.getTime())) {
     return NextResponse.json({ error: 'Invalid date' }, { status: 400 })
+  }
+
+  if (typeof prisma.publicHoliday?.create !== 'function') {
+    return NextResponse.json(
+      { error: 'Holiday model not ready. Restart the server after prisma generate.' },
+      { status: 503 }
+    )
   }
 
   try {
