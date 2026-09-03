@@ -2,7 +2,7 @@
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
 import { numberToIndianWords } from '@/lib/numberToWords'
-import { formatDateDDMonthYYYY } from '@/lib/utils'
+import { formatPayslipAddressLines, formatDateDDMonthYYYY } from '@/lib/utils'
 import type { PayslipPreviewProps } from '@/types'
 
 const labelStyle: React.CSSProperties = {
@@ -130,9 +130,9 @@ export default function PayslipPreviewT2({
               src={settings.logo_url}
               alt="Company Logo"
               style={{
-                height: '68px',
+                height: '110px',
                 width: 'auto',
-                maxWidth: '200px',
+                maxWidth: '220px',
                 objectFit: 'contain',
                 display: 'block',
               }}
@@ -190,7 +190,11 @@ export default function PayslipPreviewT2({
               {settings.company_name || 'Company Name'}
             </div>
             {settings.address ? (
-              <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>{settings.address}</div>
+              <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.6 }}>
+                {formatPayslipAddressLines(settings.address).map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
+              </div>
             ) : null}
             {contactLine ? (
               <div style={{ fontSize: 11, color: '#6b7280' }}>{contactLine}</div>

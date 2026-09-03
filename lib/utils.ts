@@ -99,6 +99,55 @@ export const MONTHS = [
 
 export const PAYMENT_MODES = ['Bank Transfer', 'Cash', 'Cheque'] as const
 
+const CITY_PIN_RE =
+  /(?:^|,)\s*((?:BENGALURU|BANGALORE|BENAGALURU))\s*,\s*(KARNATAKA\s+\d{6})\s*$/i
+const STUCK_CITY_PIN_RE =
+  /\s+((?:BENGALURU|BANGALORE|BENAGALURU))\s*,\s*(KARNATAKA\s+\d{6})\s*$/i
+
+function joinAddressParts(parts: string[]): string {
+  return parts.join(', ')
+}
+
+/** Split a company address into three lines for payslip/letter headers. */
+export function formatPayslipAddressLines(address: string): string[] {
+  const explicit = address
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (explicit.length >= 2) return explicit
+
+  const raw = (explicit[0] || address).trim()
+  if (!raw) return []
+
+  const normalized = raw.replace(/\s*,\s*/g, ', ').replace(/\s+/g, ' ')
+  let rest = normalized
+  let cityLine = ''
+
+  const cityPin = normalized.match(CITY_PIN_RE)
+  const stuckCity = !cityPin ? normalized.match(STUCK_CITY_PIN_RE) : null
+  if (cityPin && cityPin.index != null) {
+    rest = normalized.slice(0, cityPin.index).replace(/,\s*$/, '').trim()
+    cityLine = `${cityPin[1]}, ${cityPin[2]}`
+  } else if (stuckCity && stuckCity.index != null) {
+    rest = normalized.slice(0, stuckCity.index).replace(/,\s*$/, '').trim()
+    cityLine = `${stuckCity[1]}, ${stuckCity[2]}`
+  }
+
+  const parts = rest.split(',').map((s) => s.trim()).filter(Boolean)
+  if (cityLine) {
+    const mid = Math.ceil(parts.length / 2) || 0
+    return [joinAddressParts(parts.slice(0, mid)), joinAddressParts(parts.slice(mid)), cityLine].filter(
+      Boolean
+    )
+  }
+
+  if (parts.length <= 3) return parts
+  const last = parts.length >= 2 ? joinAddressParts(parts.slice(-2)) : parts[parts.length - 1]
+  const head = parts.length >= 2 ? parts.slice(0, -2) : parts
+  const mid = Math.ceil(head.length / 2)
+  return [joinAddressParts(head.slice(0, mid)), joinAddressParts(head.slice(mid)), last].filter(Boolean)
+}
+
 export const emptySettings = {
   id: '',
   company_name: '',

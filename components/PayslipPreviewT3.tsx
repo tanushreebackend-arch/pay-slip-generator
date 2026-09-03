@@ -2,7 +2,7 @@
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
 import { numberToIndianWords } from '@/lib/numberToWords'
-import { formatDateDDMonthYYYY, MONTHS } from '@/lib/utils'
+import { formatPayslipAddressLines, formatDateDDMonthYYYY, MONTHS } from '@/lib/utils'
 import type { PayslipPreviewProps } from '@/types'
 
 function fmt(n: number): string {
@@ -141,7 +141,7 @@ export default function PayslipPreviewT3({
             <img
               src={settings.logo_url}
               alt="Logo"
-              style={{ height: 56, objectFit: 'contain', display: 'block' }}
+              style={{ height: 88, objectFit: 'contain', display: 'block' }}
             />
           ) : (
             <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>
@@ -188,7 +188,11 @@ export default function PayslipPreviewT3({
             {settings.company_name || 'Company Name'}
           </div>
           {settings.address ? (
-            <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>{settings.address}</div>
+            <div style={{ fontSize: 11, color: '#6b7280', lineHeight: 1.5 }}>
+              {formatPayslipAddressLines(settings.address).map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+            </div>
           ) : null}
           {contactLine ? (
             <div style={{ fontSize: 11, color: '#6b7280' }}>{contactLine}</div>

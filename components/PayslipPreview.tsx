@@ -2,6 +2,7 @@
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
 import { numberToIndianWords } from '@/lib/numberToWords'
+import { formatPayslipAddressLines } from '@/lib/utils'
 import type { PayslipPreviewProps, Settings } from '@/types'
 
 const PAGE_W = 794
@@ -162,7 +163,7 @@ function earnTd(col: number, extra?: React.CSSProperties): React.CSSProperties {
 
 function CompanyHeader({ s }: { s: Settings }) {
   const emailTel = [s.email, s.phone].filter(Boolean).join(' | ')
-  const addrLines = (s.address || '').split('\n').filter(Boolean)
+  const addrLines = formatPayslipAddressLines(s.address || '')
 
   return (
     <div
@@ -178,7 +179,7 @@ function CompanyHeader({ s }: { s: Settings }) {
           <img
             src={s.logo_url}
             alt="Logo"
-            style={{ height: 64, objectFit: 'contain', display: 'block' }}
+            style={{ height: 96, objectFit: 'contain', display: 'block' }}
           />
         ) : null}
       </div>

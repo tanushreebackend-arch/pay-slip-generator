@@ -2,7 +2,7 @@
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
 import { numberToIndianWords } from '@/lib/numberToWords'
-import { MONTHS } from '@/lib/utils'
+import { formatPayslipAddressLines, MONTHS } from '@/lib/utils'
 import type { LeaveDetailRow } from '@/lib/leaveDetails'
 import type { PayslipPreviewProps } from '@/types'
 
@@ -280,10 +280,7 @@ export default function PayslipPreviewT4({
     earnings.push({ label: 'Final Settlement', amount: c.finalSettlement })
   }
 
-  const addressLines = (settings.address || '')
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
+  const addressLines = formatPayslipAddressLines(settings.address || '')
 
   return (
     <div
@@ -305,21 +302,26 @@ export default function PayslipPreviewT4({
               {(settings.company_name || 'Company Name').toUpperCase()}
             </div>
             {addressLines.length > 0 ? (
-              <div style={{ fontSize: 10, lineHeight: 1.65, marginTop: 8, maxWidth: 420, fontWeight: 400 }}>
+              <div style={{ fontSize: 10, lineHeight: 1.65, marginTop: 8, maxWidth: 460, fontWeight: 400 }}>
                 {addressLines.map((line, i) => (
                   <div key={i}>{line.toUpperCase()}</div>
                 ))}
               </div>
             ) : null}
           </div>
-          {settings.logo_url ? (
-            <img
-              src={settings.logo_url}
-              alt="Logo"
-              crossOrigin="anonymous"
-              style={{ width: 120, height: 120, objectFit: 'contain', flexShrink: 0 }}
-            />
-          ) : null}
+          <img
+            src="/company-logo.png"
+            alt="Logo"
+            crossOrigin="anonymous"
+            style={{
+              height: 150,
+              width: 'auto',
+              maxWidth: 280,
+              objectFit: 'contain',
+              flexShrink: 0,
+              display: 'block',
+            }}
+          />
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 700, marginTop: 28, marginBottom: 8, letterSpacing: 0.2 }}>
