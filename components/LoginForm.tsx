@@ -75,7 +75,7 @@ export default function LoginForm() {
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: '#FFF8F0' }}>
+    <Box sx={{ minHeight: '100vh', display: 'flex', bgcolor: '#F7F5FB' }}>
       <Box
         sx={{
           display: { xs: 'none', md: 'flex' },

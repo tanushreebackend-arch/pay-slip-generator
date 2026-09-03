@@ -54,7 +54,7 @@ export default function EmployeeFinancePage() {
       label: 'My Total CTC',
       value: formatCurrency(data.annualCTC),
       icon: Wallet,
-      color: 'bg-yellow-100 text-yellow-700',
+      color: 'bg-violet-100 text-violet-700',
     },
     {
       label: 'My Monthly Salary',
@@ -147,7 +147,7 @@ export default function EmployeeFinancePage() {
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             row.status === 'Paid'
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
+                              : 'bg-violet-100 text-violet-700'
                           }`}>
                             {row.status}
                           </span>

@@ -4,16 +4,16 @@ export const paygenTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#EB3514',
-      light: '#ff6b4a',
-      dark: '#c42a0f',
+      main: '#7C3AED',
+      light: '#A78BFA',
+      dark: '#6D28D9',
       contrastText: '#ffffff',
     },
     secondary: {
       main: '#111827',
     },
     background: {
-      default: '#f8fafc',
+      default: '#F7F5FB',
       paper: '#ffffff',
     },
     success: { main: '#16a34a' },

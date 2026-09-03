@@ -64,7 +64,7 @@ export default function Sidebar() {
         />
         <div>
           <h1 className="text-[15px] font-bold text-text-primary">
-            <span className="text-purple-600">Purple</span>Merit
+            <span className="text-accent">Purple</span>Merit
           </h1>
           <p className="text-[10px] font-medium uppercase tracking-wider text-text-muted">
             HRMS PORTAL

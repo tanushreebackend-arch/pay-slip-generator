@@ -11,22 +11,22 @@ const config: Config = {
     extend: {
       colors: {
         background: '#ffffff',
-        surface: '#FFF8F0',
-        border: '#F0E6D6',
+        surface: '#F7F5FB',
+        border: '#E8E4F0',
         'text-primary': '#1A1A2E',
         'text-secondary': '#6b7280',
         'text-muted': '#9ca3af',
-        accent: '#F5A623',
-        'accent-hover': '#E09516',
-        'accent-light': '#FFF5E6',
+        accent: '#7C3AED',
+        'accent-hover': '#6D28D9',
+        'accent-light': '#F3EEFF',
         popover: '#ffffff',
         'popover-foreground': '#1A1A2E',
-        input: '#F0E6D6',
-        ring: '#F5A623',
+        input: '#E8E4F0',
+        ring: '#7C3AED',
         card: '#ffffff',
         'card-foreground': '#1A1A2E',
         primary: {
-          DEFAULT: '#F5A623',
+          DEFAULT: '#7C3AED',
           foreground: '#ffffff',
         },
         secondary: {
@@ -42,12 +42,12 @@ const config: Config = {
           light: '#FEF2F2',
         },
         muted: {
-          DEFAULT: '#FFF8F0',
+          DEFAULT: '#F7F5FB',
           foreground: '#6b7280',
         },
         sidebar: {
-          bg: '#FFF8F0',
-          active: '#FFF0D4',
+          bg: '#FFFFFF',
+          active: '#EDE9FE',
         },
       },
       borderRadius: {

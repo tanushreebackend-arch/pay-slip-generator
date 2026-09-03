@@ -34,7 +34,7 @@ const MONTHS = [
 ]
 
 const statusBadge: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
+  PENDING: 'bg-violet-100 text-violet-700',
   APPROVED: 'bg-green-100 text-green-700',
   REJECTED: 'bg-red-100 text-red-700',
 }
@@ -170,7 +170,7 @@ export default function AdminLeavesPage() {
               </TableRow>
             ) : (
               filtered.map((l) => (
-                <TableRow key={l.id} className={l.status === 'PENDING' ? 'bg-yellow-50/50' : ''}>
+                <TableRow key={l.id} className={l.status === 'PENDING' ? 'bg-violet-50/50' : ''}>
                   <TableCell>
                     <div className="font-medium">{l.employee.name}</div>
                     <div className="text-xs text-text-muted">{l.employee.employee_id}</div>

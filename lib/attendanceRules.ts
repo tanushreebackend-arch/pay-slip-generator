@@ -41,10 +41,10 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
 export const ATTENDANCE_STATUS_BADGE: Record<AttendanceStatus, string> = {
   PRESENT: 'bg-green-100 text-green-700',
   LATE: 'bg-orange-100 text-orange-700',
-  HALF_DAY: 'bg-yellow-100 text-yellow-700',
+  HALF_DAY: 'bg-violet-100 text-violet-700',
   ABSENT: 'bg-red-100 text-red-700',
   ON_LEAVE: 'bg-blue-100 text-blue-700',
-  HOLIDAY: 'bg-yellow-100 text-yellow-800',
+  HOLIDAY: 'bg-amber-100 text-amber-800',
   WEEK_OFF: 'bg-indigo-100 text-indigo-700',
   NOT_TRACKED: 'bg-gray-100 text-gray-500',
 }

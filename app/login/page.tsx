@@ -14,7 +14,7 @@ function LoginFallback() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: '#FFF8F0',
+        bgcolor: '#F7F5FB',
       }}
     >
       <CircularProgress color="primary" />

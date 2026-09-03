@@ -68,13 +68,13 @@ function CircularProgress({ ms, maxMs }: { ms: number; maxMs: number }) {
 
   return (
     <svg width="180" height="180" viewBox="0 0 180 180">
-      <circle cx="90" cy="90" r={r} fill="none" stroke="#F0E6D6" strokeWidth="10" />
+      <circle cx="90" cy="90" r={r} fill="none" stroke="#E8E4F0" strokeWidth="10" />
       <circle
         cx="90"
         cy="90"
         r={r}
         fill="none"
-        stroke="#F5A623"
+        stroke="#7C3AED"
         strokeWidth="10"
         strokeLinecap="round"
         strokeDasharray={circ}
@@ -293,8 +293,8 @@ export default function EmployeeDashboardPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                <Briefcase className="h-5 w-5 text-orange-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-light">
+                <Briefcase className="h-5 w-5 text-accent" />
               </div>
               <div>
                 <p className="text-xs text-text-muted">Leave Balance</p>
@@ -328,8 +328,8 @@ export default function EmployeeDashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-border bg-background p-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
-                <LogOut className="h-5 w-5 text-orange-600" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100">
+                <LogOut className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-xs text-text-muted">Check Out</p>

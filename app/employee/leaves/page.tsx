@@ -44,7 +44,7 @@ type PaySummary = {
 const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Earned Leave', 'Comp-Off']
 
 const statusBadge: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  PENDING: 'bg-violet-100 text-violet-700 border-violet-200',
   APPROVED: 'bg-green-100 text-green-700 border-green-200',
   REJECTED: 'bg-red-100 text-red-700 border-red-200',
 }
@@ -127,7 +127,7 @@ export default function EmployeeLeavesPage() {
       .reduce((sum, l) => sum + l.days, 0)
 
   const balanceCards = [
-    { type: 'Casual', color: 'bg-yellow-50 border-yellow-200', value: paySummary ? paySummary.paidLeaveRemaining : 0 },
+    { type: 'Casual', color: 'bg-violet-50 border-violet-200', value: paySummary ? paySummary.paidLeaveRemaining : 0 },
     { type: 'Sick', color: 'bg-green-50 border-green-200', value: Math.max(0, 0.5 - leavesByType('Sick Leave')) },
     { type: 'Earned', color: 'bg-blue-50 border-blue-200', value: Math.max(0, 0 - leavesByType('Earned Leave')) },
     { type: 'Comp-Off', color: 'bg-purple-50 border-purple-200', value: Math.max(0, 0 - leavesByType('Comp-Off')) },
