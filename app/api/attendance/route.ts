@@ -71,6 +71,39 @@ export async function POST(request: Request) {
   if (error) return error
 
   const body = await request.json()
+
+  if (session!.user.role === UserRole.ADMIN) {
+    const employeeId = String(body.employee_id || '')
+    const dateStr = String(body.date || '')
+    const checkInRaw = String(body.check_in || '')
+    if (!employeeId || !dateStr || !checkInRaw) {
+      return NextResponse.json(
+        { error: 'Employee, date, and check-in time are required' },
+        { status: 400 }
+      )
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    }
+
+    const date = new Date(dateStr + 'T00:00:00')
+    const checkIn = new Date(checkInRaw)
+    const checkOut = body.check_out ? new Date(String(body.check_out)) : null
+    if (Number.isNaN(checkIn.getTime()) || (checkOut && Number.isNaN(checkOut.getTime()))) {
+      return NextResponse.json({ error: 'Invalid check-in or check-out time' }, { status: 400 })
+    }
+
+    const row = await prisma.attendanceRecord.upsert({
+      where: { employeeId_date: { employeeId, date } },
+      create: { employeeId, date, checkIn, checkOut, notes: body.notes || null },
+      update: { checkIn, checkOut, notes: body.notes || null },
+      include: { employee: true },
+    })
+    return NextResponse.json(formatRecord(row), { status: 201 })
+  }
+
   const action = body.action as 'check-in' | 'check-out'
 
   if (session!.user.role !== UserRole.EMPLOYEE || !session!.user.employeeId) {
@@ -117,4 +150,59 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+}
+
+export async function PATCH(request: Request) {
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (session!.user.role !== UserRole.ADMIN) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const id = String(body.id || '')
+  if (!id) {
+    return NextResponse.json({ error: 'Record id is required' }, { status: 400 })
+  }
+
+  const existing = await prisma.attendanceRecord.findUnique({ where: { id } })
+  if (!existing) {
+    return NextResponse.json({ error: 'Record not found' }, { status: 404 })
+  }
+
+  const checkIn = body.check_in ? new Date(String(body.check_in)) : existing.checkIn
+  const checkOut =
+    body.check_out === null || body.check_out === ''
+      ? null
+      : body.check_out
+        ? new Date(String(body.check_out))
+        : existing.checkOut
+
+  if (Number.isNaN(checkIn.getTime()) || (checkOut && Number.isNaN(checkOut.getTime()))) {
+    return NextResponse.json({ error: 'Invalid check-in or check-out time' }, { status: 400 })
+  }
+
+  const row = await prisma.attendanceRecord.update({
+    where: { id },
+    data: { checkIn, checkOut },
+    include: { employee: true },
+  })
+  return NextResponse.json(formatRecord(row))
+}
+
+export async function DELETE(request: Request) {
+  const { session, error } = await requireAuth()
+  if (error) return error
+  if (session!.user.role !== UserRole.ADMIN) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) {
+    return NextResponse.json({ error: 'Record id is required' }, { status: 400 })
+  }
+
+  await prisma.attendanceRecord.delete({ where: { id } }).catch(() => null)
+  return NextResponse.json({ ok: true })
 }

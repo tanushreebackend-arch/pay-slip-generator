@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSettings } from '@/context/SettingsContext'
-import { calculateSalary, getDefaultConveyanceAllowance, getDefaultMedicalAllowance, getDefaultPfAmount, getDefaultSpecialAllowance, getPayCycleDaysInPeriod, PAY_CYCLE_DAYS } from '@/lib/salaryCalc'
+import { calculateSalary, getDefaultBasic, getDefaultConveyanceAllowance, getDefaultHra, getDefaultMedicalAllowance, getDefaultPfAmount, getDefaultSpecialAllowance, getPayCycleDaysInPeriod, PAY_CYCLE_DAYS } from '@/lib/salaryCalc'
 import { downloadPayslipPdf } from '@/lib/downloadPayslip'
 import { getErrorMessage, MONTHS, getMonthDateRange } from '@/lib/utils'
 import { calculateMonthlyLeaveSummary, type LeaveRecordInput } from '@/lib/leavePolicy'
 import {
   buildLeaveDetailsTable,
+  type LeaveDetailRow,
   type LeaveRecordWithType,
 } from '@/lib/leaveDetails'
 import PayslipPreviewT4 from '@/components/PayslipPreviewT4'
@@ -56,6 +57,8 @@ const defaultPayslip = (): PayslipData => ({
   medical_allowance: null,
   conveyance_allowance: null,
   special_allowance: null,
+  basic: null,
+  hra: null,
   pf_amount: null,
 })
 
@@ -92,6 +95,7 @@ export default function PayslipPage() {
     joiningDate: Date | null
     createdAt: Date | null
   }>({ joiningDate: null, createdAt: null })
+  const [leaveOverride, setLeaveOverride] = useState<LeaveDetailRow[] | null>(null)
   const [downloading, setDownloading] = useState(false)
   const [documentFont, setDocumentFont] = useState<string>(
     settings.document_font || DEFAULT_DOCUMENT_FONT
@@ -163,6 +167,7 @@ export default function PayslipPage() {
   }, [])
 
   useEffect(() => {
+    setLeaveOverride(null)
     if (!selected) {
       setLeaveSummary(null)
       setEmployeeLeaves([])
@@ -257,6 +262,8 @@ export default function PayslipPage() {
             medicalAllowance: payslip.medical_allowance,
             conveyanceAllowance: payslip.conveyance_allowance,
             specialAllowance: payslip.special_allowance,
+            basic: payslip.basic,
+            hra: payslip.hra,
             pfAmount: payslip.pf_amount,
           }
         )
@@ -266,7 +273,7 @@ export default function PayslipPage() {
   const payslipYear = parseInt(payslip.year, 10) || new Date().getFullYear()
   const payslipMonth = monthIndex >= 0 ? monthIndex : new Date().getMonth()
 
-  const leaveDetails =
+  const autoLeaveDetails =
     leaveSummary && selected
       ? buildLeaveDetailsTable(
           employeeLeaves,
@@ -277,6 +284,8 @@ export default function PayslipPage() {
           policyDates.createdAt
         )
       : []
+
+  const leaveDetails = leaveOverride ?? autoLeaveDetails
 
   const previewProps = {
     employee: selected,
@@ -412,14 +421,25 @@ export default function PayslipPage() {
                 setSelected(emp)
                 if (!emp) return
                 const gross = Number(emp.gross_salary)
+                const basic = getDefaultBasic(gross)
+                const hra = getDefaultHra(gross, basic)
                 const medical = getDefaultMedicalAllowance(gross)
                 const conveyance = getDefaultConveyanceAllowance(gross)
                 setPayslip((prev) => ({
                   ...prev,
+                  basic,
+                  hra,
                   medical_allowance: medical,
                   conveyance_allowance: conveyance,
-                  special_allowance: getDefaultSpecialAllowance(gross, medical, conveyance),
-                  pf_amount: getDefaultPfAmount(gross),
+                  special_allowance: getDefaultSpecialAllowance(
+                    gross,
+                    medical,
+                    conveyance,
+                    basic,
+                    hra
+                  ),
+                  pf_amount:
+                    emp.pf_amount != null ? emp.pf_amount : getDefaultPfAmount(gross),
                 }))
                 setGenerated(false)
               }}
@@ -532,6 +552,36 @@ export default function PayslipPage() {
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label>Basic (monthly)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={payslip.basic ?? salaryCalc?.stdBasic ?? ''}
+                  onChange={(e) =>
+                    updatePayslip(
+                      'basic',
+                      e.target.value === '' ? null : parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>HRA (monthly)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={payslip.hra ?? salaryCalc?.stdHRA ?? ''}
+                  onChange={(e) =>
+                    updatePayslip(
+                      'hra',
+                      e.target.value === '' ? null : parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>Medical Allowance (monthly)</Label>
                 <Input
                   type="number"
@@ -596,6 +646,69 @@ export default function PayslipPage() {
               </div>
             </div>
           </div>
+
+          {leaveDetails.length > 0 && (
+            <div>
+              <SectionHeader title="Leave Details" />
+              <p className="mb-3 text-[11px] text-text-muted">
+                Shown on payslip page 2. Edit any cell before generating.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] text-[10px]">
+                  <thead>
+                    <tr className="text-left text-text-muted">
+                      <th className="pb-1 pr-1 font-semibold">Type</th>
+                      <th className="pb-1 pr-1 font-semibold">Open</th>
+                      <th className="pb-1 pr-1 font-semibold">Accrued</th>
+                      <th className="pb-1 pr-1 font-semibold">Credit</th>
+                      <th className="pb-1 pr-1 font-semibold">Availed</th>
+                      <th className="pb-1 pr-1 font-semibold">Exp/Enc</th>
+                      <th className="pb-1 font-semibold">Close</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaveDetails.map((row, index) => (
+                      <tr key={row.leaveType}>
+                        <td className="py-0.5 pr-1 align-middle">{row.leaveType}</td>
+                        {(
+                          [
+                            'opening',
+                            'accrued',
+                            'credit',
+                            'availed',
+                            'expiredEncashed',
+                            'closing',
+                          ] as const
+                        ).map((field) => (
+                          <td key={field} className="py-0.5 pr-1">
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min={0}
+                              className="h-7 px-1 text-[10px]"
+                              value={row[field]}
+                              onChange={(e) => {
+                                const next = leaveDetails.map((r, i) =>
+                                  i === index
+                                    ? {
+                                        ...r,
+                                        [field]: parseFloat(e.target.value) || 0,
+                                      }
+                                    : r
+                                )
+                                setLeaveOverride(next)
+                                setGenerated(false)
+                              }}
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div>
             <SectionHeader title="Reimbursements" />

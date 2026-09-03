@@ -25,16 +25,26 @@ export const PAYSLIP_LEAVE_TYPES = [
   'Education Leave',
   'Optional Holiday',
   'Paternity Leave',
-  'Planned Paid Leave',
+  'Paid Leave',
   'Sick Leave',
   'Special Leave',
   'Unpaid Leave',
 ] as const
 
+const PAID_LEAVE_ALIASES = new Set([
+  'Paid Leave',
+  'Planned Paid Leave',
+  'Casual Leave',
+  'Earned Leave',
+  'Sick Leave',
+])
+
 const LEAVE_TYPE_MAP: Record<string, string> = {
-  'Sick Leave': 'Sick Leave',
-  'Earned Leave': 'Earned Leave',
-  'Casual Leave': 'Planned Paid Leave',
+  'Sick Leave': 'Paid Leave',
+  'Earned Leave': 'Paid Leave',
+  'Casual Leave': 'Paid Leave',
+  'Planned Paid Leave': 'Paid Leave',
+  'Paid Leave': 'Paid Leave',
   'Optional Holiday': 'Optional Holiday',
   'Unpaid Leave': 'Unpaid Leave',
 }
@@ -52,6 +62,9 @@ function availedForType(
   const total = leaves.reduce((sum, leave) => {
     const mapped = LEAVE_TYPE_MAP[leave.leaveType] ?? leave.leaveType
     if (mapped !== payslipType) return sum
+    if (payslipType === 'Paid Leave' && !PAID_LEAVE_ALIASES.has(leave.leaveType) && mapped !== 'Paid Leave') {
+      return sum
+    }
     return sum + leaveDaysInMonth(leave, year, month)
   }, 0)
   return fmt(total)
@@ -69,7 +82,7 @@ export function buildLeaveDetailsTable(
   const carryForward = getCarryForwardLeaveDays(leaves, year, month, policyStart)
 
   return PAYSLIP_LEAVE_TYPES.map((leaveType) => {
-    if (leaveType === 'Planned Paid Leave' && summary) {
+    if (leaveType === 'Paid Leave' && summary) {
       const opening = fmt(carryForward)
       const accrued = fmt(summary.monthlyAllowanceDays)
       const availed = fmt(Math.min(summary.approvedLeaveDays, summary.paidAllowanceDays))

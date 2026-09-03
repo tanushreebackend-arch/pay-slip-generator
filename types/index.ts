@@ -17,6 +17,8 @@ export interface Employee {
   pf_number: string
   uan: string
   gross_salary: number
+  /** Monthly employee PF in rupees; null = use 12% of basic on payslip */
+  pf_amount: number | null
   payment_mode: string
 }
 
@@ -42,6 +44,8 @@ export interface Settings {
   /** Font size percentage for documents (85-125) */
   document_font_size: number
   payslip_custom_fields: PayslipCustomField[]
+  relieving_letter_body: string
+  experience_letter_body: string
 }
 
 export interface CustomDeduction {
@@ -85,6 +89,8 @@ export interface PayslipData {
   medical_allowance: number | null
   conveyance_allowance: number | null
   special_allowance: number | null
+  basic: number | null
+  hra: number | null
   /** null = auto 12% of basic */
   pf_amount: number | null
 }

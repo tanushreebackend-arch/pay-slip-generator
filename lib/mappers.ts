@@ -18,6 +18,7 @@ export function mapEmployee(row: PrismaEmployee): Employee {
     pf_number: row.pfNumber ?? '',
     uan: row.uan ?? '',
     gross_salary: Number(row.grossSalary),
+    pf_amount: row.pfAmount != null ? Number(row.pfAmount) : null,
     payment_mode: row.paymentMode,
   }
 }
@@ -52,5 +53,7 @@ export function mapSettings(row: PrismaSettings): Settings {
       row.documentFont && isDocumentFontId(row.documentFont) ? row.documentFont : DEFAULT_DOCUMENT_FONT,
     document_font_size: row.documentFontSize ?? 100,
     payslip_custom_fields: parsePayslipCustomFields(row.payslipCustomFields),
+    relieving_letter_body: row.relievingLetterBody ?? '',
+    experience_letter_body: row.experienceLetterBody ?? '',
   }
 }

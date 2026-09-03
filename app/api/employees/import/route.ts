@@ -61,6 +61,10 @@ export async function POST(request: Request) {
             pfNumber: String(row.pf_number ?? '') || null,
             uan: String(row.uan ?? '') || null,
             grossSalary: gross,
+            pfAmount:
+              row.pf_amount === undefined || row.pf_amount === null || row.pf_amount === ''
+                ? null
+                : parseFloat(String(row.pf_amount)) || null,
             paymentMode: String(row.payment_mode ?? 'Bank Transfer'),
           },
         })

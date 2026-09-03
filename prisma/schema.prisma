@@ -45,6 +45,7 @@ model Employee {
   pfNumber          String?            @map("pf_number")
   uan               String?
   grossSalary       Decimal            @default(0) @map("gross_salary") @db.Decimal(12, 2)
+  pfAmount          Decimal?           @map("pf_amount") @db.Decimal(12, 2)
   paymentMode       String             @default("Bank Transfer") @map("payment_mode")
   createdAt         DateTime           @default(now()) @map("created_at")
   user              User?
@@ -98,8 +99,10 @@ model Settings {
   signatureUrl          String?  @map("signature_url")
   documentFont          String?  @default("arial") @map("document_font")
   documentFontSize      Int?     @default(100) @map("document_font_size")
-  payslipCustomFields   Json     @default("[]") @map("payslip_custom_fields")
-  createdAt             DateTime @default(now()) @map("created_at")
+  payslipCustomFields    Json     @default("[]") @map("payslip_custom_fields")
+  relievingLetterBody    String?  @map("relieving_letter_body")
+  experienceLetterBody   String?  @map("experience_letter_body")
+  createdAt              DateTime @default(now()) @map("created_at")
 
   @@map("settings")
 }

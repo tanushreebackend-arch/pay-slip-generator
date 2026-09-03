@@ -13,6 +13,10 @@ import {
   resolveDocumentFont,
 } from '@/lib/documentFonts'
 import { getErrorMessage } from '@/lib/utils'
+import {
+  DEFAULT_EXPERIENCE_LETTER_BODY,
+  DEFAULT_RELIEVING_LETTER_BODY,
+} from '@/lib/letterTemplates'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -62,7 +66,7 @@ function AssetUploadBox({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
@@ -89,6 +93,8 @@ export default function SettingsPage() {
     document_font: DEFAULT_DOCUMENT_FONT,
     document_font_size: DEFAULT_DOCUMENT_FONT_SIZE,
     payslip_custom_fields: [] as PayslipCustomField[],
+    relieving_letter_body: DEFAULT_RELIEVING_LETTER_BODY,
+    experience_letter_body: DEFAULT_EXPERIENCE_LETTER_BODY,
   })
   const [saving, setSaving] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
@@ -109,6 +115,8 @@ export default function SettingsPage() {
         document_font: settings.document_font || DEFAULT_DOCUMENT_FONT,
         document_font_size: settings.document_font_size || DEFAULT_DOCUMENT_FONT_SIZE,
         payslip_custom_fields: settings.payslip_custom_fields ?? [],
+        relieving_letter_body: settings.relieving_letter_body || DEFAULT_RELIEVING_LETTER_BODY,
+        experience_letter_body: settings.experience_letter_body || DEFAULT_EXPERIENCE_LETTER_BODY,
       })
     }
   }, [settings, loading])
@@ -139,6 +147,37 @@ export default function SettingsPage() {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const buildPayload = (next = form) => ({
+    id: settings.id || undefined,
+    company_name: next.company_name || null,
+    address: next.address || null,
+    email: next.email || null,
+    phone: next.phone || null,
+    website: next.website || null,
+    signatory_name: next.signatory_name || null,
+    signatory_designation: next.signatory_designation || null,
+    logo_url: next.logo_url || null,
+    signature_url: next.signature_url || null,
+    document_font: next.document_font || DEFAULT_DOCUMENT_FONT,
+    document_font_size: clampDocumentFontSize(next.document_font_size),
+    payslip_custom_fields: next.payslip_custom_fields.filter((f) => f.label.trim()),
+    relieving_letter_body: next.relieving_letter_body || null,
+    experience_letter_body: next.experience_letter_body || null,
+  })
+
+  const persistSettings = async (next: typeof form) => {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPayload(next)),
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.error || 'Failed to save settings')
+    }
+    await refetch()
+  }
+
   const uploadAsset = async (
     file: File,
     prefix: 'logo' | 'signature',
@@ -146,6 +185,12 @@ export default function SettingsPage() {
   ): Promise<string | null> => {
     setUploading(true)
     try {
+      if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+        throw new Error('Use a PNG, JPG, or WebP image')
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error('Image must be 2 MB or smaller')
+      }
       const formData = new FormData()
       formData.append('file', file)
       formData.append('prefix', prefix)
@@ -164,16 +209,28 @@ export default function SettingsPage() {
   const handleLogoFile = async (file: File) => {
     const url = await uploadAsset(file, 'logo', setUploadingLogo)
     if (url) {
-      update('logo_url', url)
-      toast.success('Logo uploaded')
+      const next = { ...form, logo_url: url }
+      setForm(next)
+      try {
+        await persistSettings(next)
+        toast.success('Logo uploaded and saved')
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err, 'Logo uploaded but could not be saved'))
+      }
     }
   }
 
   const handleSignatureFile = async (file: File) => {
     const url = await uploadAsset(file, 'signature', setUploadingSignature)
     if (url) {
-      update('signature_url', url)
-      toast.success('Signature uploaded')
+      const next = { ...form, signature_url: url }
+      setForm(next)
+      try {
+        await persistSettings(next)
+        toast.success('Signature uploaded and saved')
+      } catch (err: unknown) {
+        toast.error(getErrorMessage(err, 'Signature uploaded but could not be saved'))
+      }
     }
   }
 
@@ -181,34 +238,8 @@ export default function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      const payload = {
-        id: settings.id || undefined,
-        company_name: form.company_name || null,
-        address: form.address || null,
-        email: form.email || null,
-        phone: form.phone || null,
-        website: form.website || null,
-        signatory_name: form.signatory_name || null,
-        signatory_designation: form.signatory_designation || null,
-        logo_url: form.logo_url || null,
-        signature_url: form.signature_url || null,
-        document_font: form.document_font || DEFAULT_DOCUMENT_FONT,
-        document_font_size: clampDocumentFontSize(form.document_font_size),
-        payslip_custom_fields: form.payslip_custom_fields.filter((f) => f.label.trim()),
-      }
-
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to save settings')
-      }
-
+      await persistSettings(form)
       toast.success('Settings saved')
-      await refetch()
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to save settings'))
     } finally {
@@ -409,6 +440,33 @@ export default function SettingsPage() {
               uploading={uploadingSignature}
               onFile={handleSignatureFile}
             />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-background p-6">
+          <h2 className="mb-1 text-base font-semibold text-text-primary">Letter templates</h2>
+          <p className="mb-4 text-sm text-text-secondary">
+            Relieving and experience letter wording. Placeholders:{' '}
+            {'{employee_name}'}, {'{employee_id}'}, {'{designation}'}, {'{department}'},{' '}
+            {'{company}'}, {'{joining_date}'}, {'{last_working_date}'}
+          </p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Relieving letter</Label>
+              <Textarea
+                rows={8}
+                value={form.relieving_letter_body}
+                onChange={(e) => update('relieving_letter_body', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Experience letter</Label>
+              <Textarea
+                rows={8}
+                value={form.experience_letter_body}
+                onChange={(e) => update('experience_letter_body', e.target.value)}
+              />
+            </div>
           </div>
         </section>
 

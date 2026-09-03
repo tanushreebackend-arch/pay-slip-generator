@@ -5,6 +5,16 @@ export const PAY_CYCLE_DAYS = 30
 const MEDICAL_RATIO = 1250 / 52000
 const CONVEYANCE_RATIO = 1600 / 52000
 
+export function getDefaultBasic(grossSalary: number): number {
+  return parseFloat((grossSalary * 0.5).toFixed(2))
+}
+
+export function getDefaultHra(grossSalary: number, basic?: number | null): number {
+  const stdBasic =
+    basic != null && !Number.isNaN(basic) ? parseFloat(Number(basic).toFixed(2)) : getDefaultBasic(grossSalary)
+  return parseFloat((stdBasic * 0.4).toFixed(2))
+}
+
 export function getDefaultMedicalAllowance(grossSalary: number): number {
   return parseFloat((grossSalary * MEDICAL_RATIO).toFixed(2))
 }
@@ -16,10 +26,14 @@ export function getDefaultConveyanceAllowance(grossSalary: number): number {
 export function getDefaultSpecialAllowance(
   grossSalary: number,
   medicalAllowance?: number | null,
-  conveyanceAllowance?: number | null
+  conveyanceAllowance?: number | null,
+  basic?: number | null,
+  hra?: number | null
 ): number {
-  const stdBasic = parseFloat((grossSalary * 0.5).toFixed(2))
-  const stdHRA = parseFloat((stdBasic * 0.4).toFixed(2))
+  const stdBasic =
+    basic != null && !Number.isNaN(basic) ? parseFloat(Number(basic).toFixed(2)) : getDefaultBasic(grossSalary)
+  const stdHRA =
+    hra != null && !Number.isNaN(hra) ? parseFloat(Number(hra).toFixed(2)) : getDefaultHra(grossSalary, stdBasic)
   const medical =
     medicalAllowance != null && !Number.isNaN(medicalAllowance)
       ? parseFloat(Number(medicalAllowance).toFixed(2))
@@ -63,6 +77,8 @@ export type SalaryLineItem = { label: string; amount: number }
 export type SalaryCalculationOptions = {
   finalSettlement?: number
   reimbursements?: SalaryLineItem[]
+  basic?: number | null
+  hra?: number | null
   /** Override standard medical allowance (monthly gross component) */
   medicalAllowance?: number | null
   /** Override standard conveyance / convenience allowance (monthly) */
@@ -93,8 +109,14 @@ export function calculateSalary(
   const effectivePaidDays = parseFloat(Math.max(0, daysInPeriod - lopDays).toFixed(1))
   const ratio = PAY_CYCLE_DAYS > 0 ? effectivePaidDays / PAY_CYCLE_DAYS : 1
 
-  const stdBasic = parseFloat((grossSalary * 0.5).toFixed(2))
-  const stdHRA = parseFloat((stdBasic * 0.4).toFixed(2))
+  const stdBasic =
+    options.basic != null && !Number.isNaN(options.basic)
+      ? parseFloat(Number(options.basic).toFixed(2))
+      : getDefaultBasic(grossSalary)
+  const stdHRA =
+    options.hra != null && !Number.isNaN(options.hra)
+      ? parseFloat(Number(options.hra).toFixed(2))
+      : getDefaultHra(grossSalary, stdBasic)
   const stdMedical =
     options.medicalAllowance != null && !Number.isNaN(options.medicalAllowance)
       ? parseFloat(Number(options.medicalAllowance).toFixed(2))
@@ -106,7 +128,7 @@ export function calculateSalary(
   const stdSpecial =
     options.specialAllowance != null && !Number.isNaN(options.specialAllowance)
       ? parseFloat(Number(options.specialAllowance).toFixed(2))
-      : getDefaultSpecialAllowance(grossSalary, stdMedical, stdConveyance)
+      : getDefaultSpecialAllowance(grossSalary, stdMedical, stdConveyance, stdBasic, stdHRA)
 
   const actualBasic = parseFloat((stdBasic * ratio).toFixed(2))
   const actualHRA = parseFloat((stdHRA * ratio).toFixed(2))

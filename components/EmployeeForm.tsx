@@ -36,6 +36,7 @@ const emptyForm = {
   pf_number: '',
   uan: '',
   gross_salary: '',
+  pf_amount: '',
   payment_mode: 'Bank Transfer',
   password: '',
 }
@@ -72,6 +73,7 @@ export default function EmployeeForm({
         pf_number: employee.pf_number || '',
         uan: employee.uan || '',
         gross_salary: String(employee.gross_salary ?? ''),
+        pf_amount: employee.pf_amount != null ? String(employee.pf_amount) : '',
         payment_mode: employee.payment_mode || 'Bank Transfer',
         password: '',
       })
@@ -120,6 +122,7 @@ export default function EmployeeForm({
         pf_number: form.pf_number || null,
         uan: form.uan || null,
         gross_salary: gross,
+        pf_amount: form.pf_amount === '' ? null : parseFloat(form.pf_amount),
         payment_mode: form.payment_mode,
         ...(form.password ? { password: form.password } : {}),
       }
@@ -236,6 +239,17 @@ export default function EmployeeForm({
               value={form.gross_salary}
               onChange={(e) => update('gross_salary', e.target.value)}
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>PF Amount (monthly)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.pf_amount}
+              onChange={(e) => update('pf_amount', e.target.value)}
+              placeholder="Optional — used on payslips"
             />
           </div>
           <div className="space-y-2">

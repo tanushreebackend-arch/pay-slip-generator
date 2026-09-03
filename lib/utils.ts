@@ -113,4 +113,6 @@ export const emptySettings = {
   document_font: 'arial',
   document_font_size: 100,
   payslip_custom_fields: [] as { label: string; value: string }[],
+  relieving_letter_body: '',
+  experience_letter_body: '',
 }

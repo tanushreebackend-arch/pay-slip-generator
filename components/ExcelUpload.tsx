@@ -44,6 +44,9 @@ const COLUMN_MAP: Record<string, string> = {
   gross_salary: 'gross_salary',
   grosssalary: 'gross_salary',
   'gross salary': 'gross_salary',
+  pf_amount: 'pf_amount',
+  pfamount: 'pf_amount',
+  'pf amount': 'pf_amount',
   payment_mode: 'payment_mode',
   paymentmode: 'payment_mode',
   'payment mode': 'payment_mode',
@@ -111,6 +114,9 @@ export default function ExcelUpload({ open, onOpenChange, onSuccess }: ExcelUplo
         if (mapped.name && mapped.employee_id) {
           mapped.joining_date = parseDate(mapped.joining_date)
           mapped.gross_salary = parseFloat(String(mapped.gross_salary)) || 0
+          if (mapped.pf_amount !== undefined && mapped.pf_amount !== '') {
+            mapped.pf_amount = parseFloat(String(mapped.pf_amount)) || null
+          }
           mapped.payment_mode = mapped.payment_mode
             ? String(mapped.payment_mode)
             : 'Bank Transfer'
@@ -175,7 +181,7 @@ export default function ExcelUpload({ open, onOpenChange, onSuccess }: ExcelUplo
           <DialogDescription>
             Upload .xlsx or .xls with columns: name, employee_id, designation, department,
             joining_date, email, phone, bank_name, bank_account, pan_number, pf_number, uan,
-            gross_salary, payment_mode
+            gross_salary, pf_amount, payment_mode
           </DialogDescription>
         </DialogHeader>
         <input

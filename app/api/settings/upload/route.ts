@@ -3,6 +3,9 @@ import path from 'path'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api-auth'
 
+const ALLOWED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+const MAX_BYTES = 2 * 1024 * 1024
+
 export async function POST(request: Request) {
   const { error } = await requireAdmin()
   if (error) return error
@@ -15,7 +18,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
 
-  const ext = file.name.split('.').pop() || 'png'
+  if (!ALLOWED_TYPES.has(file.type)) {
+    return NextResponse.json(
+      { error: 'Logo/signature must be a PNG, JPG, or WebP image' },
+      { status: 400 }
+    )
+  }
+
+  if (file.size > MAX_BYTES) {
+    return NextResponse.json({ error: 'Image must be 2 MB or smaller' }, { status: 400 })
+  }
+
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'png'
   const filename = `${prefix}-${Date.now()}.${ext}`
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'company')
   await mkdir(uploadDir, { recursive: true })

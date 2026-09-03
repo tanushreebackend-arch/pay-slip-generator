@@ -57,6 +57,7 @@ export async function POST(request: Request) {
     pf_number,
     uan,
     gross_salary,
+    pf_amount,
     payment_mode,
     password,
   } = body
@@ -95,6 +96,10 @@ export async function POST(request: Request) {
           pfNumber: pf_number || null,
           uan: uan || null,
           grossSalary: gross,
+          pfAmount:
+            pf_amount === null || pf_amount === undefined || pf_amount === ''
+              ? null
+              : parseFloat(String(pf_amount)),
           paymentMode: payment_mode || 'Bank Transfer',
         },
       })

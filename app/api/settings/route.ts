@@ -30,6 +30,8 @@ export async function PUT(request: Request) {
     documentFont: body.document_font && isDocumentFontId(body.document_font) ? body.document_font : DEFAULT_DOCUMENT_FONT,
     documentFontSize: clampDocumentFontSize(body.document_font_size),
     payslipCustomFields: body.payslip_custom_fields ?? [],
+    relievingLetterBody: body.relieving_letter_body ?? null,
+    experienceLetterBody: body.experience_letter_body ?? null,
   }
 
   const existing = body.id

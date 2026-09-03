@@ -1,6 +1,12 @@
 'use client'
 
 import { resolveDocumentFont, resolveDocumentFontZoom } from '@/lib/documentFonts'
+import {
+  DEFAULT_EXPERIENCE_LETTER_BODY,
+  DEFAULT_RELIEVING_LETTER_BODY,
+  fillLetterTemplate,
+  letterBodyParagraphs,
+} from '@/lib/letterTemplates'
 import { formatDateDDMonthYYYY } from '@/lib/utils'
 import type { Employee, LetterData, Settings } from '@/types'
 
@@ -160,44 +166,26 @@ export default function LetterPreview({
 
         <div style={{ marginBottom: 12 }}>Dear {employee.name},</div>
 
-        {isRelieving ? (
-          <>
-            <p style={pStyle}>
-              This is to inform you that your resignation has been accepted and you are hereby
-              relieved from your duties as <strong>{employee.designation || '—'}</strong> at{' '}
-              <strong>{company}</strong>, effective <strong>{lastWorking}</strong>.
-            </p>
-            <p style={pStyle}>
-              We acknowledge your association with us from <strong>{joining}</strong> to{' '}
-              <strong>{lastWorking}</strong>. During your tenure, your professionalism,
-              dedication, and contributions have been sincerely valued by the organization.
-            </p>
-            <p style={pStyle}>
-              We wish you the very best in your future endeavors and hope you achieve great
-              success in your career ahead.
-            </p>
-          </>
-        ) : (
-          <>
-            <p style={pStyle}>
-              This is to certify that <strong>{employee.name}</strong> (Employee ID:{' '}
-              <strong>{employee.employee_id}</strong>) has successfully completed an internship
-              at <strong>{company}</strong> from <strong>{joining}</strong> to{' '}
-              <strong>{lastWorking}</strong>, serving as{' '}
-              <strong>{employee.designation || '—'}</strong> in the{' '}
-              <strong>{employee.department || '—'}</strong> department.
-            </p>
-            <p style={pStyle}>
-              During this period, <strong>{employee.name}</strong> demonstrated excellent
-              dedication, a strong work ethic, and made meaningful contributions to the team. We
-              were impressed by their skills and commitment.
-            </p>
-            <p style={pStyle}>
-              We wish <strong>{employee.name}</strong> all the best for their future and are
-              confident they will excel in their career ahead.
-            </p>
-          </>
-        )}
+        {letterBodyParagraphs(
+          fillLetterTemplate(
+            isRelieving
+              ? settings.relieving_letter_body || DEFAULT_RELIEVING_LETTER_BODY
+              : settings.experience_letter_body || DEFAULT_EXPERIENCE_LETTER_BODY,
+            {
+              employee_name: employee.name,
+              employee_id: employee.employee_id,
+              designation: employee.designation || '—',
+              department: employee.department || '—',
+              company,
+              joining_date: joining,
+              last_working_date: lastWorking,
+            }
+          )
+        ).map((paragraph, i) => (
+          <p key={i} style={pStyle}>
+            {paragraph}
+          </p>
+        ))}
 
         <div style={{ marginTop: 24, marginBottom: 20 }}>Yours sincerely,</div>
 
